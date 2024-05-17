@@ -1,204 +1,411 @@
-#[derive(Debug, PartialEq)]
+use crate::data_types::BaseType;
+use crate::fields::Field;
+
+pub struct MessageDefinition {
+    pub message_type: MessageType,
+    pub fields: Vec<FieldDefinition>,
+}
+pub struct FieldDefinition {
+    pub field: Field,
+    pub number: u8, // still here for debugging purposes
+    pub size: u8,
+    pub base_type: BaseType,
+}
+
 pub struct MessageType {
     pub number: u16,
     pub name: &'static str,
 }
 
 impl MessageType {
-    // pub : MessageType = MessageTypeconst INVALID                                                    FIT_UINT16_INVALID;
-    pub const UNKNOWN: MessageType = MessageType { number: 1024, name: "Unknown" };
-    pub const FILE_ID: MessageType = MessageType { number: 0, name: "File Id" };
-    pub const CAPABILITIES: MessageType = MessageType { number: 1, name: "Capabilities" };
-    pub const DEVICE_SETTINGS: MessageType = MessageType { number: 2, name: "Device settings" };
-    pub const USER_PROFILE: MessageType = MessageType { number: 3, name: "User profile" };
-    pub const HRM_PROFILE: MessageType = MessageType { number: 4, name: "HRM profile" };
-    pub const SDM_PROFILE: MessageType = MessageType { number: 5, name: "SDM profile" };
-    pub const BIKE_PROFILE: MessageType = MessageType { number: 6, name: "Bike profile" };
-    pub const ZONES_TARGET: MessageType = MessageType { number: 7, name: "Zones target" };
-    pub const HR_ZONE: MessageType = MessageType { number: 8, name: "HR zone" };
-    pub const POWER_ZONE: MessageType = MessageType { number: 9, name: "Power zone" };
-    pub const MET_ZONE: MessageType = MessageType { number: 10, name: "MET zone" };
-    pub const SPORT: MessageType = MessageType { number: 12, name: "Sport" };
-    pub const GOAL: MessageType = MessageType { number: 15, name: "Goal" };
-    pub const SESSION: MessageType = MessageType { number: 18, name: "Session" };
-    pub const LAP: MessageType = MessageType { number: 19, name: "Lap" };
-    pub const RECORD: MessageType = MessageType { number: 20, name: "Record" };
-    pub const EVENT: MessageType = MessageType { number: 21, name: "Event" };
-    pub const DEVICE_INFO: MessageType = MessageType { number: 23, name: "Device info" };
-    pub const WORKOUT: MessageType = MessageType { number: 26, name: "Workout" };
-    pub const WORKOUT_STEP: MessageType = MessageType { number: 27, name: "Workout step" };
-    pub const SCHEDULE: MessageType = MessageType { number: 28, name: "Schedule" };
-    pub const WEIGHT_SCALE: MessageType = MessageType { number: 30, name: "Weight scale" };
-    pub const COURSE: MessageType = MessageType { number: 31, name: "Course" };
-    pub const COURSE_POINT: MessageType = MessageType { number: 32, name: "Course point" };
-    pub const TOTALS: MessageType = MessageType { number: 33, name: "Totals" };
-    pub const ACTIVITY: MessageType = MessageType { number: 34, name: "Activity" };
-    pub const SOFTWARE: MessageType = MessageType { number: 35, name: "Software" };
-    pub const FILE_CAPABILITIES: MessageType = MessageType { number: 37, name: "File capabilities" };
-    pub const MESG_CAPABILITIES: MessageType = MessageType { number: 38, name: "Message capabilities" };
-    pub const FIELD_CAPABILITIES: MessageType = MessageType { number: 39, name: "Field capabilities" };
-    pub const FILE_CREATOR: MessageType = MessageType { number: 49, name: "File creator" };
-    pub const BLOOD_PRESSURE: MessageType = MessageType { number: 51, name: "Blood pressure" };
-    pub const SPEED_ZONE: MessageType = MessageType { number: 53, name: "Speed zone" };
-    pub const MONITORING: MessageType = MessageType { number: 55, name: "Monitoring" };
-    pub const TRAINING_FILE: MessageType = MessageType { number: 72, name: "Training file" };
-    pub const HRV: MessageType = MessageType { number: 78, name: "HRV" };
-    pub const ANT_RX: MessageType = MessageType { number: 80, name: "ANT rx" };
-    pub const ANT_TX: MessageType = MessageType { number: 81, name: "ANT tx" };
-    pub const ANT_CHANNEL_ID: MessageType = MessageType { number: 82, name: "ANT channel id" };
-    pub const LENGTH: MessageType = MessageType { number: 101, name: "Length" };
-    pub const MONITORING_INFO: MessageType = MessageType { number: 103, name: "Monitoring info" };
-    pub const PAD: MessageType = MessageType { number: 105, name: "Pad" };
-    pub const SLAVE_DEVICE: MessageType = MessageType { number: 106, name: "Slave device" };
-    pub const CONNECTIVITY: MessageType = MessageType { number: 127, name: "Connectivity" };
-    pub const WEATHER_CONDITIONS: MessageType = MessageType { number: 128, name: "Weather conditions" };
-    pub const WEATHER_ALERT: MessageType = MessageType { number: 129, name: "Weather alert" };
-    pub const CADENCE_ZONE: MessageType = MessageType { number: 131, name: "Cadence zone" };
-    pub const HR: MessageType = MessageType { number: 132, name: "HR" };
-    pub const SEGMENT_LAP: MessageType = MessageType { number: 142, name: "Segment lap" };
-    pub const MEMO_GLOB: MessageType = MessageType { number: 145, name: "Memo glob" };
-    pub const SEGMENT_ID: MessageType = MessageType { number: 148, name: "Segment id" };
-    pub const SEGMENT_LEADERBOARD_ENTRY: MessageType = MessageType { number: 149, name: "Segment leaderboard entry" };
-    pub const SEGMENT_POINT: MessageType = MessageType { number: 150, name: "Segment point" };
-    pub const SEGMENT_FILE: MessageType = MessageType { number: 151, name: "Segment file" };
-    pub const WORKOUT_SESSION: MessageType = MessageType { number: 158, name: "Workout session" };
-    pub const WATCHFACE_SETTINGS: MessageType = MessageType { number: 159, name: "Watchface settings" };
-    pub const GPS_METADATA: MessageType = MessageType { number: 160, name: "GPS Metadata" };
-    pub const CAMERA_EVENT: MessageType = MessageType { number: 161, name: "Camera event" };
-    pub const TIMESTAMP_CORRELATION: MessageType = MessageType { number: 162, name: "Timestamp correlation" };
-    pub const GYROSCOPE_DATA: MessageType = MessageType { number: 164, name: "Gyroscope data" };
-    pub const ACCELEROMETER_DATA: MessageType = MessageType { number: 165, name: "Accelerometer data" };
-    pub const THREE_D_SENSOR_CALIBRATION: MessageType = MessageType { number: 167, name: "3D sensor calibration" };
-    pub const VIDEO_FRAME: MessageType = MessageType { number: 169, name: "Video frame" };
-    pub const OBDII_DATA: MessageType = MessageType { number: 174, name: "OBD II data" };
-    pub const NMEA_SENTENCE: MessageType = MessageType { number: 177, name: "NMEA sentence" };
-    pub const AVIATION_ATTITUDE: MessageType = MessageType { number: 178, name: "Aviation attitude" };
-    pub const VIDEO: MessageType = MessageType { number: 184, name: "Video" };
-    pub const VIDEO_TITLE: MessageType = MessageType { number: 185, name: "Video title" };
-    pub const VIDEO_DESCRIPTION: MessageType = MessageType { number: 186, name: "Video description" };
-    pub const VIDEO_CLIP: MessageType = MessageType { number: 187, name: "Video clip" };
-    pub const OHR_SETTINGS: MessageType = MessageType { number: 188, name: "OHR settings" };
-    pub const EXD_SCREEN_CONFIGURATION: MessageType = MessageType { number: 200, name: "EXD screen configuration" };
-    pub const EXD_DATA_FIELD_CONFIGURATION: MessageType = MessageType { number: 201, name: "EXD data field configuration" };
-    pub const EXD_DATA_CONCEPT_CONFIGURATION: MessageType = MessageType { number: 202, name: "EXD data concept configuration" };
-    pub const FIELD_DESCRIPTION: MessageType = MessageType { number: 206, name: "Field description" };
-    pub const DEVELOPER_DATA_ID: MessageType = MessageType { number: 207, name: "Developer data id" };
-    pub const MAGNETOMETER_DATA: MessageType = MessageType { number: 208, name: "Magnetometer data" };
-    pub const BAROMETER_DATA: MessageType = MessageType { number: 209, name: "Barometer data" };
-    pub const ONE_D_SENSOR_CALIBRATION: MessageType = MessageType { number: 210, name: "1D sensor calibration" };
-    pub const SET: MessageType = MessageType { number: 225, name: "Set" };
-    pub const STRESS_LEVEL: MessageType = MessageType { number: 227, name: "Stress level" };
-    pub const DIVE_SETTINGS: MessageType = MessageType { number: 258, name: "Dive settings" };
-    pub const DIVE_GAS: MessageType = MessageType { number: 259, name: "Dive gas" };
-    pub const DIVE_ALARM: MessageType = MessageType { number: 262, name: "Dive alarm" };
-    pub const EXERCISE_TITLE: MessageType = MessageType { number: 264, name: "Exercise title" };
-    pub const DIVE_SUMMARY: MessageType = MessageType { number: 268, name: "Dive summary" };
-    pub const JUMP: MessageType = MessageType { number: 285, name: "Jump" };
-    pub const CLIMB_PRO: MessageType = MessageType { number: 317, name: "Climb pro" };
-    pub const DEVICE_AUX_BATTERY_INFO: MessageType = MessageType { number: 375, name: "Device AUX battery info" };
-    pub const MFG_RANGE_MIN: MessageType = MessageType { number: 0xFF00, name: "MFG range min" };
-    pub const MFG_RANGE_MAX: MessageType = MessageType { number: 0xFFFE, name: "MFG range max" };
+    pub fn resolve(i: u16) -> MessageType {
+        match i {
+            0 => MessageType {
+                number: 0,
+                name: "File Id",
+            },
+            1 => MessageType {
+                number: 1,
+                name: "Capabilities",
+            },
+            2 => MessageType {
+                number: 2,
+                name: "Device settings",
+            },
+            3 => MessageType {
+                number: 3,
+                name: "User profile",
+            },
+            4 => MessageType {
+                number: 4,
+                name: "HRM profile",
+            },
+            5 => MessageType {
+                number: 5,
+                name: "SDM profile",
+            },
+            6 => MessageType {
+                number: 6,
+                name: "Bike profile",
+            },
+            7 => MessageType {
+                number: 7,
+                name: "Zones target",
+            },
+            8 => MessageType {
+                number: 8,
+                name: "HR zone",
+            },
+            9 => MessageType {
+                number: 9,
+                name: "Power zone",
+            },
+            10 => MessageType {
+                number: 10,
+                name: "MET zone",
+            },
+            12 => MessageType {
+                number: 12,
+                name: "Sport",
+            },
+            15 => MessageType {
+                number: 15,
+                name: "Goal",
+            },
+            18 => MessageType {
+                number: 18,
+                name: "Session",
+            },
+            19 => MessageType {
+                number: 19,
+                name: "Lap",
+            },
+            20 => MessageType {
+                number: 20,
+                name: "Record",
+            },
+            21 => MessageType {
+                number: 21,
+                name: "Event",
+            },
+            23 => MessageType {
+                number: 23,
+                name: "Device info",
+            },
+            26 => MessageType {
+                number: 26,
+                name: "Workout",
+            },
+            27 => MessageType {
+                number: 27,
+                name: "Workout step",
+            },
+            28 => MessageType {
+                number: 28,
+                name: "Schedule",
+            },
+            30 => MessageType {
+                number: 30,
+                name: "Weight scale",
+            },
+            31 => MessageType {
+                number: 31,
+                name: "Course",
+            },
+            32 => MessageType {
+                number: 32,
+                name: "Course point",
+            },
+            33 => MessageType {
+                number: 33,
+                name: "Totals",
+            },
+            34 => MessageType {
+                number: 34,
+                name: "Activity",
+            },
+            35 => MessageType {
+                number: 35,
+                name: "Software",
+            },
+            37 => MessageType {
+                number: 37,
+                name: "File capabilities",
+            },
+            38 => MessageType {
+                number: 38,
+                name: "Message capabilities",
+            },
+            39 => MessageType {
+                number: 39,
+                name: "Field capabilities",
+            },
+            49 => MessageType {
+                number: 49,
+                name: "File creator",
+            },
+            51 => MessageType {
+                number: 51,
+                name: "Blood pressure",
+            },
+            53 => MessageType {
+                number: 53,
+                name: "Speed zone",
+            },
+            55 => MessageType {
+                number: 55,
+                name: "Monitoring",
+            },
+            72 => MessageType {
+                number: 72,
+                name: "Training file",
+            },
+            78 => MessageType {
+                number: 78,
+                name: "HRV",
+            },
+            80 => MessageType {
+                number: 80,
+                name: "ANT rx",
+            },
+            81 => MessageType {
+                number: 81,
+                name: "ANT tx",
+            },
+            82 => MessageType {
+                number: 82,
+                name: "ANT channel id",
+            },
+            101 => MessageType {
+                number: 101,
+                name: "Length",
+            },
+            103 => MessageType {
+                number: 103,
+                name: "Monitoring info",
+            },
+            105 => MessageType {
+                number: 105,
+                name: "Pad",
+            },
+            106 => MessageType {
+                number: 106,
+                name: "Slave device",
+            },
+            127 => MessageType {
+                number: 127,
+                name: "Connectivity",
+            },
+            128 => MessageType {
+                number: 128,
+                name: "Weather conditions",
+            },
+            129 => MessageType {
+                number: 129,
+                name: "Weather alert",
+            },
+            131 => MessageType {
+                number: 131,
+                name: "Cadence zone",
+            },
+            132 => MessageType {
+                number: 132,
+                name: "HR",
+            },
+            142 => MessageType {
+                number: 142,
+                name: "Segment lap",
+            },
+            145 => MessageType {
+                number: 145,
+                name: "Memo glob",
+            },
+            148 => MessageType {
+                number: 148,
+                name: "Segment id",
+            },
+            149 => MessageType {
+                number: 149,
+                name: "Segment leaderboard entry",
+            },
+            150 => MessageType {
+                number: 150,
+                name: "Segment point",
+            },
+            151 => MessageType {
+                number: 151,
+                name: "Segment file",
+            },
+            158 => MessageType {
+                number: 158,
+                name: "Workout session",
+            },
+            159 => MessageType {
+                number: 159,
+                name: "Watchface settings",
+            },
+            160 => MessageType {
+                number: 160,
+                name: "GPS Metadata",
+            },
+            161 => MessageType {
+                number: 161,
+                name: "Camera event",
+            },
+            162 => MessageType {
+                number: 162,
+                name: "Timestamp correlation",
+            },
+            164 => MessageType {
+                number: 164,
+                name: "Gyroscope data",
+            },
+            165 => MessageType {
+                number: 165,
+                name: "Accelerometer data",
+            },
+            167 => MessageType {
+                number: 167,
+                name: "3D sensor calibration",
+            },
+            169 => MessageType {
+                number: 169,
+                name: "Video frame",
+            },
+            174 => MessageType {
+                number: 174,
+                name: "OBD II data",
+            },
+            177 => MessageType {
+                number: 177,
+                name: "NMEA sentence",
+            },
+            178 => MessageType {
+                number: 178,
+                name: "Aviation attitude",
+            },
+            184 => MessageType {
+                number: 184,
+                name: "Video",
+            },
+            185 => MessageType {
+                number: 185,
+                name: "Video title",
+            },
+            186 => MessageType {
+                number: 186,
+                name: "Video description",
+            },
+            187 => MessageType {
+                number: 187,
+                name: "Video clip",
+            },
+            188 => MessageType {
+                number: 188,
+                name: "OHR settings",
+            },
+            200 => MessageType {
+                number: 200,
+                name: "EXD screen configuration",
+            },
+            201 => MessageType {
+                number: 201,
+                name: "EXD data field configuration",
+            },
+            202 => MessageType {
+                number: 202,
+                name: "EXD data concept configuration",
+            },
+            206 => MessageType {
+                number: 206,
+                name: "Field description",
+            },
+            207 => MessageType {
+                number: 207,
+                name: "Developer data id",
+            },
+            208 => MessageType {
+                number: 208,
+                name: "Magnetometer data",
+            },
+            209 => MessageType {
+                number: 209,
+                name: "Barometer data",
+            },
+            210 => MessageType {
+                number: 210,
+                name: "1D sensor calibration",
+            },
+            216 => MessageType {
+                number: 216,
+                name: "Time in zone",
+            },
+            225 => MessageType {
+                number: 225,
+                name: "Set",
+            },
+            227 => MessageType {
+                number: 227,
+                name: "Stress level",
+            },
+            258 => MessageType {
+                number: 258,
+                name: "Dive settings",
+            },
+            259 => MessageType {
+                number: 259,
+                name: "Dive gas",
+            },
+            262 => MessageType {
+                number: 262,
+                name: "Dive alarm",
+            },
+            264 => MessageType {
+                number: 264,
+                name: "Exercise title",
+            },
+            268 => MessageType {
+                number: 268,
+                name: "Dive summary",
+            },
+            285 => MessageType {
+                number: 285,
+                name: "Jump",
+            },
+            312 => MessageType {
+                number: 312,
+                name: "Split",
+            },
+            313 => MessageType {
+                number: 313,
+                name: "Split summary",
+            },
+            317 => MessageType {
+                number: 317,
+                name: "Climb pro",
+            },
+            375 => MessageType {
+                number: 375,
+                name: "Device AUX battery info",
+            },
+            0xFF00 => MessageType {
+                number: 0xFF00,
+                name: "MFG range min",
+            },
+            0xFFFE => MessageType {
+                number: 0xFFFE,
+                name: "MFG range max",
+            },
 
-    const ALL_TYPES: [MessageType; 91] = [
-        MessageType::FILE_ID,
-        MessageType::CAPABILITIES,
-        MessageType::DEVICE_SETTINGS,
-        MessageType::USER_PROFILE,
-        MessageType::HRM_PROFILE,
-        MessageType::SDM_PROFILE,
-        MessageType::BIKE_PROFILE,
-        MessageType::ZONES_TARGET,
-        MessageType::HR_ZONE,
-        MessageType::POWER_ZONE,
-        MessageType::MET_ZONE,
-        MessageType::SPORT,
-        MessageType::GOAL,
-        MessageType::SESSION,
-        MessageType::LAP,
-        MessageType::RECORD,
-        MessageType::EVENT,
-        MessageType::DEVICE_INFO,
-        MessageType::WORKOUT,
-        MessageType::WORKOUT_STEP,
-        MessageType::SCHEDULE,
-        MessageType::WEIGHT_SCALE,
-        MessageType::COURSE,
-        MessageType::COURSE_POINT,
-        MessageType::TOTALS,
-        MessageType::ACTIVITY,
-        MessageType::SOFTWARE,
-        MessageType::FILE_CAPABILITIES,
-        MessageType::MESG_CAPABILITIES,
-        MessageType::FIELD_CAPABILITIES,
-        MessageType::FILE_CREATOR,
-        MessageType::BLOOD_PRESSURE,
-        MessageType::SPEED_ZONE,
-        MessageType::MONITORING,
-        MessageType::TRAINING_FILE,
-        MessageType::HRV,
-        MessageType::ANT_RX,
-        MessageType::ANT_TX,
-        MessageType::ANT_CHANNEL_ID,
-        MessageType::LENGTH,
-        MessageType::MONITORING_INFO,
-        MessageType::PAD,
-        MessageType::SLAVE_DEVICE,
-        MessageType::CONNECTIVITY,
-        MessageType::WEATHER_CONDITIONS,
-        MessageType::WEATHER_ALERT,
-        MessageType::CADENCE_ZONE,
-        MessageType::HR,
-        MessageType::SEGMENT_LAP,
-        MessageType::MEMO_GLOB,
-        MessageType::SEGMENT_ID,
-        MessageType::SEGMENT_LEADERBOARD_ENTRY,
-        MessageType::SEGMENT_POINT,
-        MessageType::SEGMENT_FILE,
-        MessageType::WORKOUT_SESSION,
-        MessageType::WATCHFACE_SETTINGS,
-        MessageType::GPS_METADATA,
-        MessageType::CAMERA_EVENT,
-        MessageType::TIMESTAMP_CORRELATION,
-        MessageType::GYROSCOPE_DATA,
-        MessageType::ACCELEROMETER_DATA,
-        MessageType::THREE_D_SENSOR_CALIBRATION,
-        MessageType::VIDEO_FRAME,
-        MessageType::OBDII_DATA,
-        MessageType::NMEA_SENTENCE,
-        MessageType::AVIATION_ATTITUDE,
-        MessageType::VIDEO,
-        MessageType::VIDEO_TITLE,
-        MessageType::VIDEO_DESCRIPTION,
-        MessageType::VIDEO_CLIP,
-        MessageType::OHR_SETTINGS,
-        MessageType::EXD_SCREEN_CONFIGURATION,
-        MessageType::EXD_DATA_FIELD_CONFIGURATION,
-        MessageType::EXD_DATA_CONCEPT_CONFIGURATION,
-        MessageType::FIELD_DESCRIPTION,
-        MessageType::DEVELOPER_DATA_ID,
-        MessageType::MAGNETOMETER_DATA,
-        MessageType::BAROMETER_DATA,
-        MessageType::ONE_D_SENSOR_CALIBRATION,
-        MessageType::SET,
-        MessageType::STRESS_LEVEL,
-        MessageType::DIVE_SETTINGS,
-        MessageType::DIVE_GAS,
-        MessageType::DIVE_ALARM,
-        MessageType::EXERCISE_TITLE,
-        MessageType::DIVE_SUMMARY,
-        MessageType::JUMP,
-        MessageType::CLIMB_PRO,
-        MessageType::DEVICE_AUX_BATTERY_INFO,
-        MessageType::MFG_RANGE_MIN,
-        MessageType::MFG_RANGE_MAX,
-    ];
-    pub(crate) fn parse(i: u16) -> MessageType {
-        for message_type in Self::ALL_TYPES {
-            if message_type.number == i {
-                return message_type;
-            }
+            147 => MessageType {
+                number: 147,
+                name: "Audio (undocumented)",
+            },
+            1024 | _ => MessageType {
+                number: 1024,
+                name: "Unknown",
+            },
         }
-
-        MessageType::UNKNOWN
     }
+
 }
