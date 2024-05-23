@@ -1,4 +1,5 @@
 #![recursion_limit = "1000"]
+
 mod message_types;
 mod data_types;
 mod fields;
@@ -9,7 +10,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
-use chrono::{DateTime, Local};
 use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
 use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
@@ -36,17 +36,22 @@ fn main() {
     read_content(&buffer);
 }
 
-#[derive(Clone, Debug, Builder)]
-struct Record {
-    timestamp: u32,
-    heart_rate: u8,
+struct Message {
+    message_type: String,
+    data: HashMap<Field, Value>
+}
+
+impl Message {
+    pub fn get_value(&self, field_name: &str) -> Option<&Value> {
+        self.data.iter().find(|(field, value)| field.name.eq(field_name))
+            .and_then(|(_, v)| Option::from(v))
+    }
 }
 
 fn read_content(buffer: &Vec<u8>) {
-    let mut records: Vec<Record> = Vec::new();
-    let offset_timestamp = DateTime::parse_from_rfc3339("1989-12-31T00:00:00+00:00").unwrap().timestamp();
     let header_info = &buffer[0..14];
     let header = read_header(header_info);
+    let mut messages: Vec<Message> = Vec::new();
     println!("Header -> Length: {}, Protocol: {}, Profile: {}, Data size: {}, Data type: {}, crc (raw): {:?}",
              header.length,
              header.protocol_version,
@@ -83,7 +88,7 @@ fn read_content(buffer: &Vec<u8>) {
             let local_message_type_value: u16 =
                 type_f1 as u16 + type_f2 as u16;
             let local_message_type = MessageType::resolve(local_message_type_value);
-            println!("Local message type {:?} ({})", local_message_type.name, local_message_type_value);
+            //println!("Local message type {:?} ({})", local_message_type.name, local_message_type_value);
 
             current_position += 2; // skip the header part besides the last byte for the field number
             let number_of_fields: u8 = buffer[current_position];
@@ -120,51 +125,20 @@ fn read_content(buffer: &Vec<u8>) {
         } else {
             let definition_message = local_message_types.get(&local_message_number).unwrap();
             let message_type = &definition_message.message_type;
-            let mut record_builder = RecordBuilder::default();
 
-            // message_type.read_data(&buffer, &definition_message.fields);
-            println!("{}:", message_type.name);
-            for field_definition in definition_message.fields.iter().clone() {
-                let end = current_position + (field_definition.size as usize);
-                let data = &buffer[current_position..end];
-                let value = ((field_definition.base_type).read)(&field_definition.base_type, data);
-                let data_field = &field_definition.field;
-                current_position += field_definition.size as usize;
-
-                match value {
-                    Value::NumberValueVecU8(value) => {
-                        //if !data_field.name.eq("Unknown") {
-                            if field_definition.base_type.name == "enum" && !value.is_empty() {
-                                let enum_value = Value::StringValue((data_field.translate_enum)(&data_field, value.get(0).unwrap()));
-                                println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, enum_value);
-                            } else {
-                                println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, value);
-                            }
-                        //}
-                    }
-                    Value::Invalid => {
-                        if !data_field.name.eq("Unknown") {
-                            //println!("\tIgnoring invalid value for field {} / {}", data_field.name, field_definition.number);
-                        }
-                    }
-                    // _ => if !data_field.name.eq("Unknown") {println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, value)}
-                    _ => println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, value)
-
-                }
-            }
-            // println!("data done. read from {:#04x} and now am at {:#04x}", local_message_number, current_position);
+            //println!("{}:", message_type.name);
+            let message = definition_message.read(&current_position, buffer);
+            current_position = message.1;
+            messages.push(message.0);
         }
-        // only parse the first definition and data message
-        // if message_type != 1 {
-        //     break;
-        // }
     }
-    // println!("Record size {}", records.len());
-    // let local_tz = Local::now().timezone();
-    // records.iter().for_each(|record| {
-    //     let formatted_timestamp = DateTime::from_timestamp(record.timestamp as i64, 0).unwrap().with_timezone(&local_tz);
-    //     println!("{} => {}",formatted_timestamp.format("%H:%M:%S"), record.heart_rate);
-    // });
+    for message in messages {
+        if !message.message_type.eq("Unknown") {
+            println!("{}", message.message_type);
+            println!("{:#?}", message.data);
+        }
+
+    }
 }
 
 fn read_header(header_info: &[u8]) -> Header {

@@ -1,10 +1,51 @@
-use crate::data_types::BaseType;
+use std::collections::HashMap;
+
+use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
+use crate::Message;
 
 pub struct MessageDefinition {
     pub message_type: MessageType,
     pub fields: Vec<FieldDefinition>,
 }
+
+impl MessageDefinition {
+    pub fn read(&self, current_position: &usize, buffer: &Vec<u8>) -> (Message, usize) {
+        let mut position = current_position.clone();
+        let mut data_map = HashMap::new();
+        for field_definition in self.fields.iter().clone() {
+            let end = position + (field_definition.size as usize);
+            let data = &buffer[position..end];
+            let value = ((field_definition.base_type).read)(&field_definition.base_type, data);
+            let data_field = &field_definition.field;
+            position += field_definition.size as usize;
+            data_map.insert(data_field.clone(), value.clone());
+            /*
+            match value {
+                Value::NumberValueVecU8(my_value) => {
+                    //if !data_field.name.eq("Unknown") {
+                    if field_definition.base_type.name == "enum" && !my_value.is_empty() {
+                        let enum_value = Value::StringValue((data_field.translate_enum)(&data_field, my_value.get(0).unwrap()));
+                        println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, enum_value);
+                    } else {
+                        println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, my_value);
+                    }
+                    //}
+                }
+                Value::Invalid => {
+                    if !data_field.name.eq("Unknown") {
+                        //println!("\tIgnoring invalid value for field {} / {}", data_field.name, field_definition.number);
+                    }
+                }
+                // _ => if !data_field.name.eq("Unknown") {println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, value)}
+                _ => println!("\t{} (type: {} / number: {}) with value {:?}", data_field.name, field_definition.base_type.name, field_definition.number, value)
+            }
+             */
+        }
+        (Message { message_type: self.message_type.name.to_string(), data: data_map }, position)
+    }
+}
+
 pub struct FieldDefinition {
     pub field: Field,
     pub number: u8, // still here for debugging purposes
@@ -407,5 +448,4 @@ impl MessageType {
             },
         }
     }
-
 }

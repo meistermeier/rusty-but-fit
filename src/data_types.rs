@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq)]
+use std::fmt::{Debug, Formatter};
+
+#[derive(PartialEq, Clone)]
 pub enum Value {
     NumberValueU64(u64),
     NumberValueU16(u16),
@@ -9,6 +11,22 @@ pub enum Value {
     NumberValueVecU8(Vec<u8>),
     StringValue(String),
     Invalid,
+}
+
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::NumberValueU64(value) => f.write_fmt(format_args!("\t{}", value)),
+            Value::NumberValueU16(value) => f.write_fmt(format_args!("\t{}", value)),
+            Value::NumberValueVecU16(value) => f.write_fmt(format_args!("\t{:?}", value)),
+            Value::NumberValueU32(value) => f.write_fmt(format_args!("\t{}", value)),
+            Value::NumberValueVecU32(value) => f.write_fmt(format_args!("\t{:?}", value)),
+            Value::NumberValueU8(value) => f.write_fmt(format_args!("\t{}", value)),
+            Value::NumberValueVecU8(value) => f.write_fmt(format_args!("\t{:?}", value)),
+            Value::StringValue(value) => f.write_fmt(format_args!("\t{}", value)),
+            Value::Invalid => f.write_fmt(format_args!("\t{}", "")),
+        }
+    }
 }
 
 pub struct BaseType {
