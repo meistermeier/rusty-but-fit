@@ -1,21 +1,46 @@
 #![recursion_limit = "1000"]
 
-mod message_types;
-mod data_types;
-mod fields;
-mod key_value_enum;
-mod types;
+#[macro_use]
+extern crate derive_builder;
 
+use clap::{Parser, Subcommand};
+use itertools::Itertools;
 use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
+
 use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
 use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 
-#[macro_use]
-extern crate derive_builder;
+mod data_types;
+mod fields;
+mod key_value_enum;
+mod message_types;
+mod types;
+
+#[derive(Parser)]
+#[command(name = "Garmin FIT parser")]
+#[command(version = "0.1")]
+#[command(about = "Parsing for Garmin's FIT file format", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+    #[arg(short, long, value_name = "FILE", help = "FIT file to parse")]
+    file: String,
+    #[arg(short)]
+    debug: bool,
+    #[arg(short, long)]
+    message_type: String,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Summary,
+    Messages
+}
 
 struct Header {
     length: u8,
@@ -27,47 +52,85 @@ struct Header {
 }
 
 fn main() {
-    let f = File::open("activity2.fit").unwrap();
+    let args = Cli::parse();
+
+    let file_name = &args.file;
+    let file = File::open(file_name);
+    if file.is_err() {
+        panic!("File {} cannot be read.", file_name);
+    }
+
+    let f = file.unwrap();
     let mut reader = BufReader::new(f);
     let mut buffer = Vec::new();
 
     // Read file into vector.
     reader.read_to_end(&mut buffer).unwrap();
-    read_content(&buffer);
+    let info = read_content(&buffer, args.debug);
+    match args.command {
+        Commands::Summary => {
+            println!("{:?}", info.get_message_types());
+        },
+        Commands::Messages => {
+            let records = info.get_messages(args.message_type.as_str());
+            for record in records {
+                println!("{:?}", record.data);
+            }
+        }
+    }
 }
 
 struct Message {
-    message_type: String,
-    data: HashMap<Field, Value>
+    message_type: MessageType,
+    data: HashMap<Field, Value>,
 }
 
 impl Message {
     pub fn get_value(&self, field_name: &str) -> Option<&Value> {
-        self.data.iter().find(|(field, value)| field.name.eq(field_name))
+        self.data
+            .iter()
+            .find(|(field, value)| field.name.eq(field_name))
             .and_then(|(_, v)| Option::from(v))
     }
 }
 
-fn read_content(buffer: &Vec<u8>) {
+impl Debug for Message {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(&self.data).finish()
+    }
+}
+
+fn read_content(buffer: &Vec<u8>, debug: bool) -> Info {
     let header_info = &buffer[0..14];
     let header = read_header(header_info);
     let mut messages: Vec<Message> = Vec::new();
-    println!("Header -> Length: {}, Protocol: {}, Profile: {}, Data size: {}, Data type: {}, crc (raw): {:?}",
-             header.length,
-             header.protocol_version,
-             header.profile_version,
-             header.data_size,
-             header.data_type,
-             header.crc
-    );
+    if debug {
+        println!("Header -> Length: {}, Protocol: {}, Profile: {}, Data size: {}, Data type: {}, crc (raw): {:?}",
+                 header.length,
+                 header.protocol_version,
+                 header.profile_version,
+                 header.data_size,
+                 header.data_type,
+                 header.crc
+        );
+    }
     let mut current_position = 14; // after header
     let mut local_message_types = HashMap::new();
     loop {
         // do the looooooping
         if current_position == buffer.len() - 2 {
-            let crc = &header.crc;
-            println!("CRC check: {:#04x} equals {:#04x} and {:#04x} equals {:#04x}", crc.get(0).unwrap(), buffer[current_position], crc.get(1).unwrap(), buffer[current_position + 1]);
-            println!("Something for later");
+            if debug {
+                println!("debug");
+                let crc = &header.crc;
+                println!(
+                    "CRC check: {:#04x} equals {:#04x} and {:#04x} equals {:#04x}",
+                    crc.get(0).unwrap(),
+                    buffer[current_position],
+                    crc.get(1).unwrap(),
+                    buffer[current_position + 1]
+                );
+                println!("Something for later");
+            }
             break;
         }
         let header_type: u8 = buffer[current_position] >> 7 & 1;
@@ -85,8 +148,7 @@ fn read_content(buffer: &Vec<u8>) {
             current_position += 2; // skip the header part besides the last byte for the field number
             let type_f1 = buffer[current_position];
             let type_f2 = buffer[current_position + 1];
-            let local_message_type_value: u16 =
-                type_f1 as u16 + type_f2 as u16;
+            let local_message_type_value: u16 = type_f1 as u16 + type_f2 as u16;
             let local_message_type = MessageType::resolve(local_message_type_value);
             //println!("Local message type {:?} ({})", local_message_type.name, local_message_type_value);
 
@@ -98,7 +160,7 @@ fn read_content(buffer: &Vec<u8>) {
                 let i2 = (i as i32 * 3) as usize;
                 let field_definition_number = buffer[current_position + i2 + 0];
                 //println!("\t field definition number {}", field_definition_number);
-                let field_length = buffer[current_position + i2 + 1];// as i32;
+                let field_length = buffer[current_position + i2 + 1]; // as i32;
                 let base_type_value = buffer[current_position + i2 + 2];
                 let field = FieldDefinition {
                     field: Field::resolve(&local_message_type, field_definition_number),
@@ -118,26 +180,39 @@ fn read_content(buffer: &Vec<u8>) {
                 }
             }
             let definition_message = MessageDefinition {
-                message_type: local_message_type,
+                message_type: local_message_type.clone(),
                 fields,
             };
             local_message_types.insert(local_message_number, definition_message);
         } else {
             let definition_message = local_message_types.get(&local_message_number).unwrap();
-            let message_type = &definition_message.message_type;
 
-            //println!("{}:", message_type.name);
             let message = definition_message.read(&current_position, buffer);
             current_position = message.1;
             messages.push(message.0);
         }
     }
-    for message in messages {
-        if !message.message_type.eq("Unknown") {
-            println!("{}", message.message_type);
-            println!("{:#?}", message.data);
-        }
 
+    Info { messages }
+}
+
+// todo name tbd
+struct Info {
+    messages: Vec<Message>,
+}
+
+impl Info {
+    pub fn get_messages(&self, message_type: &str) -> Vec<&Message> {
+        let vec = &self.messages;
+        vec.into_iter()
+            .filter(|message| message.message_type.name.eq(message_type))
+            .collect()
+    }
+
+    pub fn get_message_types(&self) -> HashMap<String, usize> {
+        let vec = &self.messages;
+        vec.into_iter()
+            .counts_by(|message| message.message_type.name.to_string())
     }
 }
 

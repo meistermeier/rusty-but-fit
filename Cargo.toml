@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.38"
+clap = { version = "4.5.4", features = ["derive"] }
 derive_builder = "0.20.0"
-strum = "0.26.2"
-strum_macros = "0.26.2"
+itertools = "0.13.0"
+log = "0.4.21"
+serde = "1.0.203"
+serde_with = "3.8.1"
