@@ -41,7 +41,8 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Summary,
-    Messages
+    Messages,
+    Dump
 }
 
 struct Header {
@@ -76,6 +77,9 @@ fn main() {
         Commands::Messages => {
             let result = info.get_messages(args.message_type.unwrap().as_str());
             println!("{}", serde_json::to_string(&result).unwrap());
+        },
+        Commands::Dump => {
+            println!("{}", serde_json::to_string(&info).unwrap());
         }
     }
 }
@@ -210,6 +214,7 @@ struct Result {
 }
 
 // todo name tbd
+#[derive(Serialize)]
 struct Info {
     messages: Vec<Message>,
 }
