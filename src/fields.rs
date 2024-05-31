@@ -959,8 +959,8 @@ impl Field {
             (317, 4) => Field::from("climb_category"),
             (317, 5) => Field::from("current_dist"),
             // <end activity file messages>
-            // audio undocumented (147)
-            (147, 2) => Field::from("Audio device"),
+            // connected devices undocumented (147)
+            (147, 2) => Field::from("device"),
             _ => Field::from("Unknown"),
         }
     }

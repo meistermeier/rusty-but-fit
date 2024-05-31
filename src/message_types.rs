@@ -533,9 +533,9 @@ impl MessageType {
         name: "MFG range max",
         known_fields: &[],
     };
-    pub const UNDOCUMENTED_AUDIO: MessageType = MessageType {
+    pub const UNDOCUMENTED_CONNECTED_DEVICES: MessageType = MessageType {
         number: 147,
-        name: "Audio (undocumented)",
+        name: "Connected devices (undocumented)",
         known_fields: &[],
     };
     pub const UNKNOWN: MessageType = MessageType {
@@ -644,7 +644,7 @@ impl MessageType {
             375 => Self::DEVICE_AUX_BATTERY_INFO,
             0xFF00 => Self::MFG_RANGE_MIN,
             0xFFFE => Self::MFG_RANGE_MAX,
-            147 => Self::UNDOCUMENTED_AUDIO,
+            147 => Self::UNDOCUMENTED_CONNECTED_DEVICES,
             1024 | _ => Self::UNKNOWN,
         }
     }
