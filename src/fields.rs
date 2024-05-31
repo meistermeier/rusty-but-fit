@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::string::ToString;
+use serde::{Serialize, Serializer};
 
 use crate::message_types::MessageType;
 use crate::types::{BacklightMode, FileType};
@@ -29,6 +30,12 @@ impl Eq for Field {}
 impl Debug for Field {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.name)
+    }
+}
+
+impl Serialize for Field {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.name)
     }
 }
 

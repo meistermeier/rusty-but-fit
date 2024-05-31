@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display, Formatter};
+use serde::{Serialize, Serializer};
 
 #[derive(PartialEq, Clone)]
 pub enum Value {
@@ -25,6 +26,22 @@ impl Debug for Value {
             Value::NumberValueVecU8(value) => f.write_fmt(format_args!("{:?}", value)),
             Value::StringValue(value) => f.write_fmt(format_args!("{}", value)),
             Value::Invalid => f.write_fmt(format_args!("{}", "<invalid>")),
+        }
+    }
+}
+
+impl Serialize for Value {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        match self {
+            Value::NumberValueU64(value) => serializer.serialize_u64(value.clone()),
+            Value::NumberValueU16(value) => serializer.serialize_u16(value.clone()),
+            Value::NumberValueVecU16(value) => serializer.serialize_unit(),
+            Value::NumberValueU32(value) => serializer.serialize_u32(value.clone()),
+            Value::NumberValueVecU32(value) => serializer.serialize_unit(),
+            Value::NumberValueU8(value) => serializer.serialize_u8(value.clone()),
+            Value::NumberValueVecU8(value) => serializer.serialize_unit(),
+            Value::StringValue(value) => serializer.serialize_str(value.as_str()),
+            Value::Invalid => serializer.serialize_str("<invalid>"),
         }
     }
 }

@@ -10,6 +10,8 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
+use serde::{Serialize, Serializer};
+use serde_with::serde_derive::Serialize;
 
 use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
@@ -33,7 +35,7 @@ struct Cli {
     #[arg(short)]
     debug: bool,
     #[arg(short, long)]
-    message_type: String,
+    message_type: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -72,14 +74,13 @@ fn main() {
             println!("{:?}", info.get_message_types());
         },
         Commands::Messages => {
-            let records = info.get_messages(args.message_type.as_str());
-            for record in records {
-                println!("{:?}", record.data);
-            }
+            let result = info.get_messages(args.message_type.unwrap().as_str());
+            println!("{}", serde_json::to_string(&result).unwrap());
         }
     }
 }
 
+#[derive(Serialize)]
 struct Message {
     message_type: MessageType,
     data: HashMap<Field, Value>,
@@ -97,6 +98,12 @@ impl Message {
 impl Debug for Message {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_map().entries(&self.data).finish()
+    }
+}
+
+impl Clone for Message {
+    fn clone(&self) -> Self {
+        Message {message_type: self.message_type.clone(), data: self.data.clone()}
     }
 }
 
@@ -196,17 +203,26 @@ fn read_content(buffer: &Vec<u8>, debug: bool) -> Info {
     Info { messages }
 }
 
+#[derive(Serialize)]
+struct Result {
+    name: String,
+    messages: Vec<Message>,
+}
+
 // todo name tbd
 struct Info {
     messages: Vec<Message>,
 }
 
 impl Info {
-    pub fn get_messages(&self, message_type: &str) -> Vec<&Message> {
+    pub fn get_messages(&self, message_type: &str) -> Result {
         let vec = &self.messages;
+        let mut new_messages:Vec<Message> = Vec::new();
         vec.into_iter()
             .filter(|message| message.message_type.name.eq(message_type))
-            .collect()
+            .for_each(|message| new_messages.push(message.clone()));
+        let name = message_type.to_string();
+        Result { name, messages: new_messages}
     }
 
     pub fn get_message_types(&self) -> HashMap<String, usize> {

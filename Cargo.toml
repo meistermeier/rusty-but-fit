@@ -1,5 +1,5 @@
 [package]
-name = "rust"
+name = "rusty-but-fit"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,4 +10,5 @@ derive_builder = "0.20.0"
 itertools = "0.13.0"
 log = "0.4.21"
 serde = "1.0.203"
+serde_json = "1.0.117"
 serde_with = "3.8.1"

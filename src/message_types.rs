@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use serde_with::serde_derive::Serialize;
 
 use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
@@ -38,6 +39,7 @@ pub struct FieldDefinition {
     pub base_type: BaseType,
 }
 
+#[derive(Serialize)]
 pub struct MessageType {
     pub number: u16,
     pub name: &'static str,
