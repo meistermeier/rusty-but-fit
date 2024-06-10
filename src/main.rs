@@ -1,15 +1,15 @@
 #![recursion_limit = "1000"]
 
-#[macro_use]
 extern crate derive_builder;
 
-use clap::{Parser, Subcommand};
-use itertools::Itertools;
 use std::collections::HashMap;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
+
+use clap::{Parser, Subcommand};
+use itertools::Itertools;
 use serde::{Serialize, Serializer};
 use serde_with::serde_derive::Serialize;
 
@@ -22,6 +22,7 @@ mod fields;
 mod key_value_enum;
 mod message_types;
 mod types;
+// mod messages;
 
 #[derive(Parser)]
 #[command(name = "Garmin FIT parser")]
@@ -36,6 +37,8 @@ struct Cli {
     debug: bool,
     #[arg(short, long)]
     message_type: Option<String>,
+    #[arg(short, long)]
+    unknown: bool,
 }
 
 #[derive(Subcommand)]
@@ -69,7 +72,7 @@ fn main() {
 
     // Read file into vector.
     reader.read_to_end(&mut buffer).unwrap();
-    let info = read_content(&buffer, args.debug);
+    let info = read_content(&buffer, &args);
     match args.command {
         Commands::Summary => {
             println!("{:?}", info.get_message_types());
@@ -90,28 +93,14 @@ struct Message {
     data: HashMap<Field, Value>,
 }
 
-impl Message {
-    pub fn get_value(&self, field_name: &str) -> Option<&Value> {
-        self.data
-            .iter()
-            .find(|(field, value)| field.name.eq(field_name))
-            .and_then(|(_, v)| Option::from(v))
-    }
-}
-
-impl Debug for Message {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_map().entries(&self.data).finish()
-    }
-}
-
 impl Clone for Message {
     fn clone(&self) -> Self {
         Message {message_type: self.message_type.clone(), data: self.data.clone()}
     }
 }
 
-fn read_content(buffer: &Vec<u8>, debug: bool) -> Info {
+fn read_content(buffer: &Vec<u8>, args: &Cli) -> Info {
+    let debug = args.debug;
     let header_info = &buffer[0..14];
     let header = read_header(header_info);
     let mut messages: Vec<Message> = Vec::new();
@@ -173,13 +162,14 @@ fn read_content(buffer: &Vec<u8>, debug: bool) -> Info {
                 //println!("\t field definition number {}", field_definition_number);
                 let field_length = buffer[current_position + i2 + 1]; // as i32;
                 let base_type_value = buffer[current_position + i2 + 2];
-                let field = FieldDefinition {
-                    field: Field::resolve(&local_message_type, field_definition_number),
+                let field = Field::resolve(&local_message_type, field_definition_number);
+                let field_definition = FieldDefinition {
+                    field,
                     number: field_definition_number,
                     size: field_length,
                     base_type: BaseType::parse(base_type_value),
                 };
-                fields.push(field);
+                fields.push(field_definition);
             }
             current_position += number_of_fields as usize * 3;
 
@@ -198,7 +188,7 @@ fn read_content(buffer: &Vec<u8>, debug: bool) -> Info {
         } else {
             let definition_message = local_message_types.get(&local_message_number).unwrap();
 
-            let message = definition_message.read(&current_position, buffer);
+            let message = definition_message.read(&current_position, buffer, args);
             current_position = message.1;
             messages.push(message.0);
         }

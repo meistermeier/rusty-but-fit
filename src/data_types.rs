@@ -1,45 +1,65 @@
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Formatter};
 use serde::{Serialize, Serializer};
 
+/*
+Base types per https://developer.garmin.com/fit/protocol/ Table 7
+enum - 1 byte read
+sint8 - 1 byte read
+uint8 - 1 byte read
+sint16 - 2 bytes read
+uint16 - 2 bytes read
+sint32 - 4 bytes read
+uint32 - 4 bytes read
+string - 1 byte read - null terminated
+float32 - 4 bytes read
+float64 - 8 bytes read
+unit8z - 1 byte read
+uint16z - 2 byte read
+uint32z - 4 byte read
+byte - 1 byte read
+sint64 - 8 byte read
+uint64 - 8 byte read
+uint64z - 8 byte read
+ */
 #[derive(PartialEq, Clone)]
 pub enum Value {
-    NumberValueU64(u64),
-    NumberValueU16(u16),
-    NumberValueVecU16(Vec<u16>),
-    NumberValueU32(u32),
-    NumberValueVecU32(Vec<u32>),
+    EnumValue(Vec<u8>),
+    NumberValueS8(i8),
     NumberValueU8(u8),
-    NumberValueVecU8(Vec<u8>),
+    NumberValueS16(i16),
+    NumberValueU16(u16),
+    NumberValueS32(i32),
+    NumberValueU32(u32),
     StringValue(String),
+    NumberValueS64(i64),
+    NumberValueU64(u64),
+    NumberValueVecS8(Vec<i8>),
+    NumberValueVecU8(Vec<u8>),
+    NumberValueVecS16(Vec<i16>),
+    NumberValueVecU16(Vec<u16>),
+    NumberValueVecS32(Vec<i32>),
+    NumberValueVecU32(Vec<u32>),
     Invalid,
-}
-
-impl Debug for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::NumberValueU64(value) => f.write_fmt(format_args!("{}", value)),
-            Value::NumberValueU16(value) => f.write_fmt(format_args!("{}", value)),
-            Value::NumberValueVecU16(value) => f.write_fmt(format_args!("{:?}", value)),
-            Value::NumberValueU32(value) => f.write_fmt(format_args!("{}", value)),
-            Value::NumberValueVecU32(value) => f.write_fmt(format_args!("{:?}", value)),
-            Value::NumberValueU8(value) => f.write_fmt(format_args!("{}", value)),
-            Value::NumberValueVecU8(value) => f.write_fmt(format_args!("{:?}", value)),
-            Value::StringValue(value) => f.write_fmt(format_args!("{}", value)),
-            Value::Invalid => f.write_fmt(format_args!("{}", "<invalid>")),
-        }
-    }
 }
 
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         match self {
+            Value::EnumValue(value) => serializer.serialize_str("<becoming an enum>"),
             Value::NumberValueU64(value) => serializer.serialize_u64(value.clone()),
             Value::NumberValueU16(value) => serializer.serialize_u16(value.clone()),
-            Value::NumberValueVecU16(value) => serializer.serialize_unit(),
+            Value::NumberValueVecU16(value) => serializer.serialize_some(value),
             Value::NumberValueU32(value) => serializer.serialize_u32(value.clone()),
-            Value::NumberValueVecU32(value) => serializer.serialize_unit(),
+            Value::NumberValueVecU32(value) => serializer.serialize_some(value),
             Value::NumberValueU8(value) => serializer.serialize_u8(value.clone()),
-            Value::NumberValueVecU8(value) => serializer.serialize_unit(),
+            Value::NumberValueVecU8(value) => serializer.serialize_some(value),
+            Value::NumberValueS64(value) => serializer.serialize_i64(value.clone()),
+            Value::NumberValueS16(value) => serializer.serialize_i16(value.clone()),
+            Value::NumberValueVecS16(value) => serializer.serialize_some(value),
+            Value::NumberValueS32(value) => serializer.serialize_i32(value.clone()),
+            Value::NumberValueVecS32(value) => serializer.serialize_some(value),
+            Value::NumberValueS8(value) => serializer.serialize_i8(value.clone()),
+            Value::NumberValueVecS8(value) => serializer.serialize_some(value),
             Value::StringValue(value) => serializer.serialize_str(value.as_str()),
             Value::Invalid => serializer.serialize_str("<invalid>"),
         }
@@ -47,7 +67,7 @@ impl Serialize for Value {
 }
 
 pub struct BaseType {
-    pub read_size: u8,
+    pub read_size: usize,
     pub type_number: u8,
     pub name: &'static str,
     pub invalid_value: u64,
@@ -61,7 +81,7 @@ impl BaseType {
         name: "enum",
         invalid_value: 0xFF,
         read: |me, data| {
-            let mut value: Vec<u8> = vec![];
+            let mut value = vec![];
             let size = data.len();
             for i in 0..size {
                 if data[i] != me.invalid_value as u8 {
@@ -70,7 +90,7 @@ impl BaseType {
                     value.push(read_value);
                 }
             }
-            Value::NumberValueVecU8(value)
+            Value::EnumValue(value)
         },
     };
     // Array of bytes. Field is invalid if all bytes are invalid.
@@ -138,39 +158,39 @@ impl BaseType {
         name: "sint16",
         invalid_value: 0x7FFF,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size as usize {
+                let mut value: Vec<i16> = vec![];
+                for i in 0..size {
+                    let bytes = data[i..i + 1].try_into().unwrap();
+                    let read_value = i16::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecS16(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = i16::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as i16 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueS16(value)
+                }
             }
         },
     };
+
     // 2’s complement format
-    pub const SINT32: BaseType = BaseType {
-        read_size: 4,
-        type_number: 133,
-        name: "sint32",
-        invalid_value: 0x7FFFFFFF,
-        read: |me, data| {
-            let mut value = 0;
-            let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
-            } else {
-                Value::NumberValueU64(value)
-            }
-        },
-    };
+    // pub const SINT32: BaseType = BaseType {
+    //     read_size: 4,
+    //     type_number: 133,
+    //     name: "sint32",
+    //     invalid_value: 0x7FFFFFFF,
+    //     read: |me, data| {
+    //
+    //     },
+    // };
+    crate::blubb! {
+    SINT32, i32, 4, 133, 0x7FFFFFFF
+    }
     // 2’s complement format
     pub const SINT64: BaseType = BaseType {
         read_size: 8,
@@ -208,10 +228,6 @@ impl BaseType {
                 }
                 Value::NumberValueVecU8(value)
             } else {
-                // for i in 0..size {
-                //     let shifty = 8 * i as i32;
-                //     value += u64::from(data[i]) << shifty;
-                // }
                 let value = u8::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as u8 {
                     Value::Invalid
@@ -238,10 +254,6 @@ impl BaseType {
                 }
                 Value::NumberValueVecU16(value)
             } else {
-                // for i in 0..size {
-                //     let shifty = 8 * i as i32;
-                //     value += u64::from(data[i]) << shifty;
-                // }
                 let value = u16::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as u16 {
                     Value::Invalid
@@ -454,4 +466,5 @@ impl BaseType {
         }
         panic!("Unknown type {}", value)
     }
+
 }

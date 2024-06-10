@@ -1,16 +1,16 @@
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::string::ToString;
 use serde::{Serialize, Serializer};
 
 use crate::message_types::MessageType;
-use crate::types::{BacklightMode, FileType};
+use crate::types::{ActivityClass, AutoActivityDetect, AutoSyncFrequency, BacklightMode, ConnectivityCapabilities, DisplayHeart, DisplayMeasure, DisplayOrientation, DisplayPosition, DisplayPower, File, FileFlags, GarminProduct, Gender, Language, LocaltimeIntoDay, Manufacturer, MesgCount, MesgNum, MessageIndex, Side, Sport, SubSport, Switch, TapSensitivity, WatchfaceMode, WorkoutCapabilities};
 use crate::types::{Event, EventType, TimeMode};
 
 #[derive(Clone)]
 pub struct Field {
     pub name: &'static str,
-    pub translate_enum: fn(&Field, &u8) -> String,
+    pub translate_enum: fn(&u32) -> String,
 }
 
 impl Hash for Field {
@@ -40,34 +40,39 @@ impl Serialize for Field {
 }
 
 impl Field {
-    pub const PRODUCT_MANUFACTURER: Field = Field {
-        name: "Manufacturer",
-        translate_enum: |_, value| "no converter".to_string(),
-    };
     const fn from(name: &'static str) -> Self {
-        Field::from_with_converter(name, |_, value| -> String {
-            format!("Cannot translate {}", value)
-        })
+        Field::from_with_converter(name, |value| format!("Cannot translate {}", value))
     }
     const fn from_with_converter(
         name: &'static str,
-        translate_enum: fn(&Field, &u8) -> String,
+        translate_enum: fn(&u32) -> String,
     ) -> Self {
         Field {
             name,
             translate_enum,
         }
     }
+    const fn from_with_converter_and_dings(
+        name: &'static str,
+        translate_enum_with_dings: fn(&Field, &u32) -> String,
+    ) -> Self {
+        Field {
+            name,
+            translate_enum: |value| "no converter".to_string(),
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        self.name.eq("Unknown")
+    }
 
     pub fn resolve(message_type: &MessageType, i: u8) -> Field {
         // sorted by Profile.xlsx/Messages
         match (message_type.number, i) {
             // file_id (0)
-            (0, 0) => Field::from_with_converter("Type", |_, value| -> String {
-                FileType::resolve(value).to_string()
-            }),
-            (0, 1) => Self::PRODUCT_MANUFACTURER, //Field::from("Manufacturer"),
-            (0, 2) => Field::from("Product"),
+            (0, 0) => Field::from_with_converter("Type", |value| File::resolve(value).to_string()),
+            (0, 1) => Field::from_with_converter("Manufacturer", |value| Manufacturer::resolve(value).to_string()),
+            (0, 2) => Field::from_with_converter("Product", |value| GarminProduct::resolve(value).to_string()),
             (0, 3) => Field::from("Serial number"),
             (0, 4) => Field::from("Time created"),
             (0, 5) => Field::from("Number"),
@@ -85,103 +90,99 @@ impl Field {
             (162, 4) => Field::from("timestamp_ms"),
             (162, 5) => Field::from("system_timestamp_ms"),
             // software (35)
-            (35, 254) => Field::from("message_index"),
+            (35, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (35, 3) => Field::from("version"),
             (35, 5) => Field::from("part_number"),
             // slave device (106)
-            (106, 0) => Field::from("manufacturer"),
-            (106, 1) => Field::from("product"),
+            (106, 0) => Field::from_with_converter("Manufacturer", |value| Manufacturer::resolve(value).to_string()),
+            (106, 1) => Field::from_with_converter("Product", |value| GarminProduct::resolve(value).to_string()),
             // capabilities (1)
             (1, 0) => Field::from("Languages"),
             (1, 1) => Field::from("Sports"),
-            (1, 21) => Field::from("Workouts supported"),
-            (1, 23) => Field::from("Connectivity supported"),
+            (1, 21) => Field::from_with_converter("Workouts supported", |value| WorkoutCapabilities::resolve(value).to_string()),
+            (1, 23) => Field::from_with_converter("Connectivity supported", |value| ConnectivityCapabilities::resolve(value).to_string()),
             // file capabilities (37)
             (37, 254) => Field::from("message_index"),
-            (37, 0) => Field::from("type"),
-            (37, 1) => Field::from("flags"),
+            (37, 0) => Field::from_with_converter("type", |value| File::resolve(value).to_string()),
+            (37, 1) => Field::from_with_converter("flags", |value| FileFlags::resolve(value).to_string()),
             (37, 2) => Field::from("directory"),
             (37, 3) => Field::from("max_count"),
             (37, 4) => Field::from("max_size"),
             // message capabilities (38)
-            (38, 254) => Field::from("message_index"),
-            (38, 0) => Field::from("file"),
-            (38, 1) => Field::from("mesg_num"),
-            (38, 2) => Field::from("count_type"),
+            (38, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
+            (38, 0) => Field::from_with_converter("file", |value| File::resolve(value).to_string()),
+            (38, 1) => Field::from_with_converter("mesg_num", |value| MesgNum::resolve(value).to_string()),
+            (38, 2) => Field::from_with_converter("count_type", |value| MesgCount::resolve(value).to_string()),
             (38, 3) => Field::from("count"),
             // field capabilities (39)
-            (39, 254) => Field::from("message_index"),
-            (39, 0) => Field::from("file"),
-            (39, 1) => Field::from("mesg_num"),
+            (39, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
+            (39, 0) => Field::from_with_converter("file", |value| File::resolve(value).to_string()),
+            (39, 1) => Field::from_with_converter("mesg_num", |value| MesgNum::resolve(value).to_string()),
             (39, 2) => Field::from("field_num"),
             (39, 3) => Field::from("count"),
             // device settings (2)
             (2, 0) => Field::from("Active time zone"),
             (2, 1) => Field::from("UTC offset"),
             (2, 2) => Field::from("Time offset"),
-            (2, 4) => Field::from_with_converter("Time mode", |_, value| -> String {
-                TimeMode::resolve(value).to_string()
-            }),
+            (2, 4) => Field::from_with_converter("Time mode", |value| TimeMode::resolve(value).to_string()),
             (2, 5) => Field::from("Time zone offset"),
-            (2, 12) => Field::from_with_converter("Backlight mode", |_, value| -> String {
-                BacklightMode::resolve(value).to_string()
-            }),
+            (2, 12) => Field::from_with_converter("Backlight mode", |value| BacklightMode::resolve(value).to_string()),
             (2, 36) => Field::from("Activity tracker enabled"),
             (2, 39) => Field::from("Clock time"),
             (2, 40) => Field::from("Pages enabled"),
             (2, 46) => Field::from("Move alert enabled"),
             (2, 47) => Field::from("Date mode"),
-            (2, 55) => Field::from("Display orientation"),
-            (2, 56) => Field::from("Mounting side"),
+            (2, 55) => Field::from_with_converter("Display orientation", |value| DisplayOrientation::resolve(value).to_string()),
+            (2, 56) => Field::from_with_converter("Mounting side", |value| Side::resolve(value).to_string()),
             (2, 57) => Field::from("Default page"),
             (2, 58) => Field::from("Autosync min. steps"),
             (2, 59) => Field::from("Autosync max. steps"),
             (2, 80) => Field::from("Lactate threshold autodetect enabled"),
             (2, 86) => Field::from("BLE auto upload enabled"),
-            (2, 89) => Field::from("Auto sync frequency"),
-            (2, 90) => Field::from("Auto activity detect"),
+            (2, 89) => Field::from_with_converter("Auto sync frequency", |value| AutoSyncFrequency::resolve(value).to_string()),
+            (2, 90) => Field::from_with_converter("Auto activity detect", |value| AutoActivityDetect::resolve(value).to_string()),
             (2, 94) => Field::from("Number of screens"),
-            (2, 95) => Field::from("Smart notification display orientation"),
-            (2, 134) => Field::from("Tap interface"),
-            (2, 174) => Field::from("Tap sensitivity"),
+            (2, 95) => Field::from_with_converter("Smart notification display orientation", |value| DisplayOrientation::resolve(value).to_string()),
+            (2, 134) => Field::from_with_converter("Tap interface", |value| Switch::resolve(value).to_string()),
+            (2, 174) => Field::from_with_converter("Tap sensitivity", |value| TapSensitivity::resolve(value).to_string()),
             // user profile (3)
-            (3, 254) => Field::from("message_index"),
+            (3, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (3, 0) => Field::from("friendly_name"),
-            (3, 1) => Field::from("gender"),
+            (3, 1) => Field::from_with_converter("gender", |value| Gender::resolve(value).to_string()),
             (3, 2) => Field::from("age"),
             (3, 3) => Field::from("height"),
             (3, 4) => Field::from("weight"),
-            (3, 5) => Field::from("language"),
-            (3, 6) => Field::from("elev_setting"),
-            (3, 7) => Field::from("weight_setting"),
+            (3, 5) => Field::from_with_converter("language", |value| Language::resolve(value).to_string()),
+            (3, 6) => Field::from_with_converter("elev_setting", |value| DisplayMeasure::resolve(value).to_string()),
+            (3, 7) => Field::from_with_converter("weight_setting", |value| DisplayMeasure::resolve(value).to_string()),
             (3, 8) => Field::from("resting_heart_rate"),
             (3, 9) => Field::from("default_max_running_heart_rate"),
             (3, 10) => Field::from("default_max_biking_heart_rate"),
             (3, 11) => Field::from("default_max_heart_rate"),
-            (3, 12) => Field::from("hr_setting"),
-            (3, 13) => Field::from("speed_setting"),
-            (3, 14) => Field::from("dist_setting"),
-            (3, 16) => Field::from("power_setting"),
-            (3, 17) => Field::from("activity_class"),
-            (3, 18) => Field::from("position_setting"),
-            (3, 21) => Field::from("temperature_setting"),
+            (3, 12) => Field::from_with_converter("hr_setting", |value| DisplayHeart::resolve(value).to_string()),
+            (3, 13) => Field::from_with_converter("speed_setting", |value| DisplayMeasure::resolve(value).to_string()),
+            (3, 14) => Field::from_with_converter("dist_setting", |value| DisplayMeasure::resolve(value).to_string()),
+            (3, 16) => Field::from_with_converter("power_setting", |value| DisplayPower::resolve(value).to_string()),
+            (3, 17) => Field::from_with_converter("activity_class", |value| ActivityClass::resolve(value).to_string()),
+            (3, 18) => Field::from_with_converter("position_setting", |value| DisplayPosition::resolve(value).to_string()),
+            (3, 21) => Field::from_with_converter("temperature_setting", |value| DisplayMeasure::resolve(value).to_string()),
             (3, 22) => Field::from("local_id"),
             (3, 23) => Field::from("global_id"),
             (3, 28) => Field::from("wake_time"),
             (3, 29) => Field::from("sleep_time"),
-            (3, 30) => Field::from("height_setting"),
+            (3, 30) => Field::from_with_converter("height_setting", |value| DisplayMeasure::resolve(value).to_string()),
             (3, 31) => Field::from("user_running_step_length"),
             (3, 32) => Field::from("user_walking_step_length"),
-            (3, 47) => Field::from("depth_setting"),
+            (3, 47) => Field::from_with_converter("depth_setting", |value| DisplayMeasure::resolve(value).to_string()),
             (3, 49) => Field::from("dive_count"),
             // hrm profile (4)
-            (4, 254) => Field::from("message_index"),
+            (4, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (4, 0) => Field::from("enabled"),
             (4, 1) => Field::from("hrm_ant_id"),
             (4, 2) => Field::from("log_hrv"),
             (4, 3) => Field::from("hrm_ant_id_trans_type"),
             // sdm profile (5)
-            (5, 254) => Field::from("message_index"),
+            (5, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (5, 0) => Field::from("enabled"),
             (5, 1) => Field::from("sdm_ant_id"),
             (5, 2) => Field::from("sdm_cal_factor"),
@@ -190,10 +191,10 @@ impl Field {
             (5, 5) => Field::from("sdm_ant_id_trans_type"),
             (5, 7) => Field::from("odometer_rollover"),
             // bike profile (6)
-            (6, 254) => Field::from("message_index"),
+            (6, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (6, 0) => Field::from("name"),
-            (6, 1) => Field::from("sport"),
-            (6, 2) => Field::from("sub_sport"),
+            (6, 1) => Field::from_with_converter("sport", |value| Sport::resolve(value).to_string()),
+            (6, 2) => Field::from_with_converter("sub_sport", |value| SubSport::resolve(value).to_string()),
             (6, 3) => Field::from("odometer"),
             (6, 4) => Field::from("bike_spd_ant_id"),
             (6, 5) => Field::from("bike_cad_ant_id"),
@@ -237,9 +238,11 @@ impl Field {
             (127, 11) => Field::from("incident_detection_enabled"),
             (127, 12) => Field::from("grouptrack_enabled"),
             // watchface settings (159)
-            (159, 254) => Field::from("message_index"),
-            (159, 0) => Field::from("mode"),
-            (159, 1) => Field::from("layout"),
+            (159, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
+            (159, 0) => Field::from_with_converter("mode", |value| WatchfaceMode::resolve(value).to_string()),
+            (159, 1) => Field::from_with_converter_and_dings("layout", |field, value| {
+                "ahhhhhh".to_string()
+            }), // todo depends on the field above :(
             // ohr settings (188)
             (188, 253) => Field::from("timestamp"),
             (188, 0) => Field::from("enabled"),
@@ -291,25 +294,25 @@ impl Field {
             (34, 253) => Field::from("Activity timestamp"),
             (34, 0) => Field::from("Activity total timer time"),
             (34, 1) => Field::from("Activity number of session"),
-            (34, 2) => Field::from_with_converter("Activity type", |_, value| -> String {
+            (34, 2) => Field::from_with_converter("Activity type", |value| -> String {
                 match value {
                     0 => "manual sport".to_string(),
                     1 => "automatic sport".to_string(),
                     &_ => "Unknown activity".to_string(),
                 }
             }),
-            (34, 3) => Field::from_with_converter("Activity event", |_, value: &u8| -> String {
-                Event::resolve(&value).to_string()
+            (34, 3) => Field::from_with_converter("Activity event", |value| -> String {
+                Event::resolve(value).to_string()
             }),
             (34, 4) => {
-                Field::from_with_converter("Activity event type", |_, value: &u8| -> String {
-                    EventType::resolve(&value).to_string()
+                Field::from_with_converter("Activity event type", |value| -> String {
+                    EventType::resolve(value).to_string()
                 })
             }
             (34, 5) => Field::from("Activity local timestamp"),
             (34, 6) => Field::from("Activity event group"),
             // session (18)
-            (18, 254) => Field::from("message_index"),
+            (18, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (18, 253) => Field::from("timestamp"),
             (18, 0) => Field::from("event"),
             (18, 1) => Field::from("event_type"),
@@ -464,7 +467,7 @@ impl Field {
             (18, 209) => Field::from("min_core_temperature"),
             (18, 210) => Field::from("max_core_temperature"),
             // lap (19)
-            (10, 254) => Field::from("message_index"),
+            (10, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (10, 253) => Field::from("timestamp"),
             (10, 0) => Field::from("event"),
             (10, 1) => Field::from("event_type"),
@@ -588,7 +591,7 @@ impl Field {
             (10, 159) => Field::from("min_core_temperature"),
             (10, 160) => Field::from("max_core_temperature"),
             // length (101)
-            (101, 254) => Field::from("message_index"),
+            (101, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (101, 253) => Field::from("timestamp"),
             (101, 0) => Field::from("event"),
             (101, 1) => Field::from("event_type"),
@@ -697,11 +700,11 @@ impl Field {
             (20, 253) => Field::from("Timestamp"),
             // event (21)
             (21, 253) => Field::from("timestamp"),
-            (21, 0) => Field::from_with_converter("event", |_, value: &u8| -> String {
-                Event::resolve(&value).to_string()
+            (21, 0) => Field::from_with_converter("event", |value| -> String {
+                Event::resolve(value).to_string()
             }),
-            (21, 1) => Field::from_with_converter("event_type", |_, value: &u8| -> String {
-                EventType::resolve(&value).to_string()
+            (21, 1) => Field::from_with_converter("event_type", |value| -> String {
+                EventType::resolve(value).to_string()
             }),
             (21, 2) => Field::from("data16"),
             (21, 3) => Field::from("data"),
@@ -916,7 +919,7 @@ impl Field {
             (285, 7) => Field::from("speed"),
             (285, 8) => Field::from("enhanced_speed"),
             // split (312)
-            (312, 254) => Field::from("message_index"),
+            (312, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (312, 0) => Field::from("split_type"),
             (312, 1) => Field::from("total_elapsed_time"),
             (312, 2) => Field::from("total_timer_time"),
@@ -936,7 +939,7 @@ impl Field {
             (312, 74) => Field::from("start_elevation"),
             (312, 110) => Field::from("total_moving_time"),
             // split summary (313)
-            (313, 254) => Field::from("message_index"),
+            (313, 254) => Field::from_with_converter("message_index", |value| MessageIndex::resolve(value).to_string()),
             (313, 0) => Field::from("split_type"),
             (313, 3) => Field::from("num_splits"),
             (313, 4) => Field::from("total_timer_time"),
