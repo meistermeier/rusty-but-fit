@@ -1,10 +1,10 @@
 use std::collections::HashMap;
+
 use serde_with::serde_derive::Serialize;
 
-use crate::data_types::{BaseType, Value};
-use crate::data_types::Value::{NumberValueVecU8};
-use crate::fields::Field;
 use crate::{Cli, Message};
+use crate::data_types::BaseType;
+use crate::fields::Field;
 
 pub struct MessageDefinition {
     pub message_type: MessageType,
@@ -19,16 +19,8 @@ impl MessageDefinition {
         for field_definition in self.fields.iter().clone() {
             let end = position + (field_definition.size as usize);
             let data = &buffer[position..end];
-            // let mut value = field_definition.base_type.read(data);
             let mut value = ((field_definition.base_type).read)(&field_definition.base_type, data);
             let data_field = &field_definition.field;
-            // todo think about converting enum value only on output
-            // if field_definition.base_type.name == "enum" && !value.eq(&Value::Invalid) {
-            //     match value {
-            //         NumberValueVecU8(ref my_value) => if !my_value.is_empty() {value = Value::StringValue((data_field.translate_enum)(&u32::from(my_value[0])))},
-            //         _ => panic!("oha")
-            //     }
-            // }
             position += field_definition.size as usize;
             if !&data_field.is_unknown() || print_unknown {
                 data_map.insert(data_field.clone(), value.clone());

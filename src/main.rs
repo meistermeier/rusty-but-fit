@@ -11,6 +11,7 @@ use std::io::Read;
 use clap::{Parser, Subcommand};
 use itertools::Itertools;
 use serde::{Serialize, Serializer};
+use serde::ser::SerializeMap;
 use serde_with::serde_derive::Serialize;
 
 use crate::data_types::{BaseType, Value};
@@ -22,7 +23,6 @@ mod fields;
 mod key_value_enum;
 mod message_types;
 mod types;
-// mod messages;
 
 #[derive(Parser)]
 #[command(name = "Garmin FIT parser")]
@@ -87,7 +87,7 @@ fn main() {
     }
 }
 
-#[derive(Serialize)]
+// #[derive(Serialize)]
 struct Message {
     message_type: MessageType,
     data: HashMap<Field, Value>,
@@ -96,6 +96,28 @@ struct Message {
 impl Clone for Message {
     fn clone(&self) -> Self {
         Message {message_type: self.message_type.clone(), data: self.data.clone()}
+    }
+}
+
+impl Serialize for Message {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> where S: Serializer {
+        let mut map = serializer.serialize_map(Option::from(self.data.len())).unwrap();
+        for entry in &self.data {
+            map.serialize_key(&entry.0).unwrap();
+            match entry.1 {
+                Value::EnumValue(value) => {
+                    if value.is_empty() {
+                        map.serialize_value("").unwrap()
+                    } else {
+                        let enum_field_value = &u32::from(value[0]);
+                        let string = (entry.0.translate_enum)(enum_field_value);
+                        map.serialize_value(&string).unwrap();
+                    }
+                },
+                _ => map.serialize_value(&entry.1).unwrap()
+            }
+        }
+        map.end()
     }
 }
 

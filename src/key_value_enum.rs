@@ -30,42 +30,9 @@ macro_rules! key_value_enum {
 
 #[macro_export]
 macro_rules! ding {
-    ($name:ident: $($field_name:ident, $type:ident)+ ) => {
-        pub struct $name {
+    ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:ident, $enum_type:ident)+)  => {
             $(
-               $field_name: $type,
+                ($MESG_NUM, $FIELD_NUM) => panic!("alarm"),//$field_name,
             )+
-        }
     };
 }
-#[macro_export]
-macro_rules! blubb {
-    ($NAME:ident, $TYPE:ty, $READ_SIZE:literal, $TYPE_NUMBER:literal, $INVALID_VALUE:literal) => {
-        pub const $NAME: BaseType = BaseType {
-            read_size: $READ_SIZE,
-            type_number: $TYPE_NUMBER,
-            name: "asdf",
-            invalid_value: $INVALID_VALUE,
-            read: |me, data| {
-                let size = data.len();
-                if size > me.read_size as usize {
-                    let mut value: Vec<$TYPE> = vec![];
-                    for i in 0..size {
-                        let position = (i * me.read_size);
-                        let bytes = data[position..position + me.read_size].try_into().unwrap();
-                        let read_value = <$TYPE>::from_le_bytes(bytes);
-                        value.push(read_value);
-                    }
-                    Value::NumberValueVecS32(value)
-                } else {
-                    let value = <$TYPE>::from_le_bytes(data.try_into().unwrap());
-                    if value == me.invalid_value as $TYPE {
-                        Value::Invalid
-                    } else {
-                        Value::NumberValueS32(value)
-                    }
-                }
-            }
-        };
-    };
-    }

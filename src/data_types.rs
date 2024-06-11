@@ -1,26 +1,7 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
+
 use serde::{Serialize, Serializer};
 
-/*
-Base types per https://developer.garmin.com/fit/protocol/ Table 7
-enum - 1 byte read
-sint8 - 1 byte read
-uint8 - 1 byte read
-sint16 - 2 bytes read
-uint16 - 2 bytes read
-sint32 - 4 bytes read
-uint32 - 4 bytes read
-string - 1 byte read - null terminated
-float32 - 4 bytes read
-float64 - 8 bytes read
-unit8z - 1 byte read
-uint16z - 2 byte read
-uint32z - 4 byte read
-byte - 1 byte read
-sint64 - 8 byte read
-uint64 - 8 byte read
-uint64z - 8 byte read
- */
 #[derive(PartialEq, Clone)]
 pub enum Value {
     EnumValue(Vec<u8>),
@@ -39,6 +20,8 @@ pub enum Value {
     NumberValueVecU16(Vec<u16>),
     NumberValueVecS32(Vec<i32>),
     NumberValueVecU32(Vec<u32>),
+    NumberValueVecS64(Vec<i64>),
+    NumberValueVecU64(Vec<u64>),
     Invalid,
 }
 
@@ -51,6 +34,8 @@ impl Serialize for Value {
             Value::NumberValueVecU16(value) => serializer.serialize_some(value),
             Value::NumberValueU32(value) => serializer.serialize_u32(value.clone()),
             Value::NumberValueVecU32(value) => serializer.serialize_some(value),
+            Value::NumberValueVecU64(value) => serializer.serialize_some(value),
+            Value::NumberValueVecS64(value) => serializer.serialize_some(value),
             Value::NumberValueU8(value) => serializer.serialize_u8(value.clone()),
             Value::NumberValueVecU8(value) => serializer.serialize_some(value),
             Value::NumberValueS64(value) => serializer.serialize_i64(value.clone()),
@@ -83,14 +68,21 @@ impl BaseType {
         read: |me, data| {
             let mut value = vec![];
             let size = data.len();
+            let mut invalid_count = 0;
             for i in 0..size {
                 if data[i] != me.invalid_value as u8 {
                     let bytes = data[i..i + 1].try_into().unwrap();
                     let read_value = u8::from_le_bytes(bytes);
                     value.push(read_value);
+                } else {
+                   invalid_count += 1;
                 }
             }
-            Value::EnumValue(value)
+            if invalid_count == size {
+                Value::Invalid
+            } else {
+                Value::EnumValue(value)
+            }
         },
     };
     // Array of bytes. Field is invalid if all bytes are invalid.
@@ -100,16 +92,22 @@ impl BaseType {
         name: "byte",
         invalid_value: 0xFF,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u8> = vec![];
+                for i in 0..size {
+                    let bytes = data[i..i + 1].try_into().unwrap();
+                    let read_value = u8::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU8(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u8::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u8 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU8(value)
+                }
             }
         },
     };
@@ -138,16 +136,22 @@ impl BaseType {
         name: "sint8",
         invalid_value: 0x7F,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<i8> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = i8::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecS8(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = i8::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as i8 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueS8(value)
+                }
             }
         },
     };
@@ -159,10 +163,10 @@ impl BaseType {
         invalid_value: 0x7FFF,
         read: |me, data| {
             let size = data.len();
-            if size > me.read_size as usize {
+            if size > me.read_size {
                 let mut value: Vec<i16> = vec![];
-                for i in 0..size {
-                    let bytes = data[i..i + 1].try_into().unwrap();
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = i16::from_le_bytes(bytes);
                     value.push(read_value);
                 }
@@ -179,18 +183,31 @@ impl BaseType {
     };
 
     // 2’s complement format
-    // pub const SINT32: BaseType = BaseType {
-    //     read_size: 4,
-    //     type_number: 133,
-    //     name: "sint32",
-    //     invalid_value: 0x7FFFFFFF,
-    //     read: |me, data| {
-    //
-    //     },
-    // };
-    crate::blubb! {
-    SINT32, i32, 4, 133, 0x7FFFFFFF
-    }
+    pub const SINT32: BaseType = BaseType {
+        read_size: 4,
+        type_number: 133,
+        name: "sint32",
+        invalid_value: 0x7FFFFFFF,
+        read: |me, data| {
+            let size = data.len();
+            if size > me.read_size {
+                let mut value: Vec<i32> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = i32::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecS32(value)
+            } else {
+                let value = i32::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as i32 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueS32(value)
+                }
+            }
+        },
+    };
     // 2’s complement format
     pub const SINT64: BaseType = BaseType {
         read_size: 8,
@@ -198,16 +215,22 @@ impl BaseType {
         name: "sint64",
         invalid_value: 0x7FFFFFFFFFFFFFFF,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<i64> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = i64::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecS64(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = i64::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as i64 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueS64(value)
+                }
             }
         },
     };
@@ -218,11 +241,10 @@ impl BaseType {
         invalid_value: 0xFF,
         read: |me, data| {
             let size = data.len();
-            // vec or plain
-            if size > me.read_size as usize {
+            if size > me.read_size {
                 let mut value: Vec<u8> = vec![];
-                for i in 0..size {
-                    let bytes = data[i..i + 1].try_into().unwrap();
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = u8::from_le_bytes(bytes);
                     value.push(read_value);
                 }
@@ -244,11 +266,10 @@ impl BaseType {
         invalid_value: 0xFFFF,
         read: |me, data| {
             let size = data.len();
-            // vec or plain
-            if size > me.read_size as usize {
+            if size > me.read_size {
                 let mut value: Vec<u16> = vec![];
-                for i in (0..size).step_by(me.read_size as usize) {
-                    let bytes = data[i..i + 2].try_into().unwrap();
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = u16::from_le_bytes(bytes);
                     value.push(read_value);
                 }
@@ -270,7 +291,6 @@ impl BaseType {
         invalid_value: 0xFFFFFFFF,
         read: |me, data| {
             let size = data.len();
-            // vec or plain
             if size > me.read_size as usize {
                 let mut value: Vec<u32> = vec![];
                 for i in (0..size).step_by(me.read_size as usize) {
@@ -280,10 +300,6 @@ impl BaseType {
                 }
                 Value::NumberValueVecU32(value)
             } else {
-                // for i in 0..size {
-                //     let shifty = 8 * i as i32;
-                //     value += u64::from(data[i]) << shifty;
-                // }
                 let value = u32::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as u32 {
                     Value::Invalid
@@ -299,16 +315,22 @@ impl BaseType {
         name: "uint64",
         invalid_value: 0xFFFFFFFFFFFFFFFF,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u64> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = u64::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU64(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u64::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u64 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU64(value)
+                }
             }
         },
     };
@@ -319,20 +341,15 @@ impl BaseType {
         invalid_value: 0x00,
         read: |me, data| {
             let size = data.len();
-            // vec or plain
-            if size > me.read_size as usize {
+            if size > me.read_size {
                 let mut value: Vec<u8> = vec![];
-                for i in 0..size {
-                    let bytes = data[i..i + 1].try_into().unwrap();
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = u8::from_le_bytes(bytes);
                     value.push(read_value);
                 }
                 Value::NumberValueVecU8(value)
             } else {
-                // for i in 0..size {
-                //     let shifty = 8 * i as i32;
-                //     value += u64::from(data[i]) << shifty;
-                // }
                 let value = u8::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as u8 {
                     Value::Invalid
@@ -348,16 +365,22 @@ impl BaseType {
         name: "uint16z",
         invalid_value: 0x0000,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u16> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = u16::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU16(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u16::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u16 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU16(value)
+                }
             }
         },
     };
@@ -367,16 +390,22 @@ impl BaseType {
         name: "uint32z",
         invalid_value: 0x00000000,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u32> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = u32::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU32(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u32::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u32 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU32(value)
+                }
             }
         },
     };
@@ -386,16 +415,22 @@ impl BaseType {
         name: "uint64z",
         invalid_value: 0x0000000000000000,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u64> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = u64::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU64(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u64::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u64 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU64(value)
+                }
             }
         },
     };
@@ -405,16 +440,22 @@ impl BaseType {
         name: "float32",
         invalid_value: 0xFFFFFFFF,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u32> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = u32::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU32(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u32::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u32 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU32(value)
+                }
             }
         },
     };
@@ -424,16 +465,22 @@ impl BaseType {
         name: "float64",
         invalid_value: 0xFFFFFFFFFFFFFFFF,
         read: |me, data| {
-            let mut value = 0;
             let size = data.len();
-            for i in 0..size {
-                let shifty = 8 * i as i32;
-                value += u64::from(data[i]) << shifty;
-            }
-            if value == me.invalid_value {
-                Value::Invalid
+            if size > me.read_size {
+                let mut value: Vec<u64> = vec![];
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = u64::from_le_bytes(bytes);
+                    value.push(read_value);
+                }
+                Value::NumberValueVecU64(value)
             } else {
-                Value::NumberValueU64(value)
+                let value = u64::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as u64 {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueU64(value)
+                }
             }
         },
     };
