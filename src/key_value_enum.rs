@@ -29,10 +29,15 @@ macro_rules! key_value_enum {
 }
 
 #[macro_export]
-macro_rules! ding {
-    ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:ident, $enum_type:ident)+)  => {
-            $(
-                ($MESG_NUM, $FIELD_NUM) => panic!("alarm"),//$field_name,
-            )+
+macro_rules! expand_fields {
+    ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:literal, $enum_type:ident)+)  => {
+        pub fn resolve2(message_type: &MessageType, i: u8) -> Field {
+            return match (message_type.number, i) {
+                $(
+                    ($MESG_NUM, $FIELD_NUM) => Field::from_with_converter($field_name, |value| $enum_type::resolve(value).to_string()),
+                )+
+                _ => Field::from("unknown"),
+            };
+        }
     };
 }

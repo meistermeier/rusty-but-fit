@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
+use std::str::FromStr;
 
 use clap::{Parser, Subcommand};
 use itertools::Itertools;
@@ -33,12 +34,14 @@ struct Cli {
     command: Commands,
     #[arg(short, long, value_name = "FILE", help = "FIT file to parse")]
     file: String,
-    #[arg(short)]
+    #[arg(short, help = "Debug output (cannot be piped to jq)")]
     debug: bool,
-    #[arg(short, long)]
+    #[arg(short, long, help = "Message type as enumerated from 'summary' command")]
     message_type: Option<String>,
-    #[arg(short, long)]
+    #[arg(short, long, help = "Output unknown fields")]
     unknown: bool,
+    #[arg(short, long, help = "Output invalid values")]
+    invalid: bool,
 }
 
 #[derive(Subcommand)]
@@ -111,7 +114,12 @@ impl Serialize for Message {
                     } else {
                         let enum_field_value = &u32::from(value[0]);
                         let string = (entry.0.translate_enum)(enum_field_value);
-                        map.serialize_value(&string).unwrap();
+                        if string.eq("true") || string.eq("false") {
+                            let bool_value:bool = FromStr::from_str(string.as_str()).unwrap();
+                            map.serialize_value(&bool_value).unwrap()
+                        } else {
+                            map.serialize_value(&string).unwrap();
+                        }
                     }
                 },
                 _ => map.serialize_value(&entry.1).unwrap()
@@ -184,7 +192,7 @@ fn read_content(buffer: &Vec<u8>, args: &Cli) -> Info {
                 //println!("\t field definition number {}", field_definition_number);
                 let field_length = buffer[current_position + i2 + 1]; // as i32;
                 let base_type_value = buffer[current_position + i2 + 2];
-                let field = Field::resolve(&local_message_type, field_definition_number);
+                let field = Field::resolve2(&local_message_type, field_definition_number);
                 let field_definition = FieldDefinition {
                     field,
                     number: field_definition_number,

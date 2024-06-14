@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde_with::serde_derive::Serialize;
 
 use crate::{Cli, Message};
-use crate::data_types::BaseType;
+use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
 
 pub struct MessageDefinition {
@@ -14,15 +14,16 @@ pub struct MessageDefinition {
 impl MessageDefinition {
     pub fn read(&self, current_position: &usize, buffer: &Vec<u8>, args: &Cli) -> (Message, usize) {
         let print_unknown = args.unknown;
+        let print_invalid = args.invalid;
         let mut position = current_position.clone();
         let mut data_map = HashMap::new();
         for field_definition in self.fields.iter().clone() {
             let end = position + (field_definition.size as usize);
             let data = &buffer[position..end];
-            let mut value = ((field_definition.base_type).read)(&field_definition.base_type, data);
+            let value = ((field_definition.base_type).read)(&field_definition.base_type, data);
             let data_field = &field_definition.field;
             position += field_definition.size as usize;
-            if !&data_field.is_unknown() || print_unknown {
+            if (!data_field.is_unknown() || print_unknown) && (!value.eq(&Value::Invalid) || print_invalid) {
                 data_map.insert(data_field.clone(), value.clone());
             }
         }

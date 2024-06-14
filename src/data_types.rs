@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use serde::{Serialize, Serializer};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Value {
     EnumValue(Vec<u8>),
     NumberValueS8(i8),
@@ -23,6 +23,12 @@ pub enum Value {
     NumberValueVecS64(Vec<i64>),
     NumberValueVecU64(Vec<u64>),
     Invalid,
+}
+
+impl Value {
+    pub fn resolve(enum_value: &u32) -> &str {
+        "numeric value"
+    }
 }
 
 impl Serialize for Value {
@@ -51,6 +57,15 @@ impl Serialize for Value {
     }
 }
 
+// just a helper at the moment
+pub struct Bool {}
+
+impl Bool {
+    pub fn resolve(enum_value: &u32) -> &str {
+        return if enum_value.eq(&1) { "true" } else { "false" };
+    }
+}
+
 pub struct BaseType {
     pub read_size: usize,
     pub type_number: u8,
@@ -60,6 +75,7 @@ pub struct BaseType {
 }
 
 impl BaseType {
+
     pub const ENUM: BaseType = BaseType {
         read_size: 1,
         type_number: 0,
@@ -75,7 +91,7 @@ impl BaseType {
                     let read_value = u8::from_le_bytes(bytes);
                     value.push(read_value);
                 } else {
-                   invalid_count += 1;
+                    invalid_count += 1;
                 }
             }
             if invalid_count == size {
@@ -139,12 +155,21 @@ impl BaseType {
             let size = data.len();
             if size > me.read_size {
                 let mut value: Vec<i8> = vec![];
+                let mut invalid_count = 0;
                 for i in (0..size).step_by(me.read_size) {
                     let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = i8::from_le_bytes(bytes);
-                    value.push(read_value);
+                    if read_value != me.invalid_value as i8 {
+                        value.push(read_value);
+                    } else {
+                        invalid_count += 1;
+                    }
                 }
-                Value::NumberValueVecS8(value)
+                if invalid_count == size {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueVecS8(value)
+                }
             } else {
                 let value = i8::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as i8 {
@@ -241,14 +266,23 @@ impl BaseType {
         invalid_value: 0xFF,
         read: |me, data| {
             let size = data.len();
+            let mut invalid_count = 0;
             if size > me.read_size {
                 let mut value: Vec<u8> = vec![];
                 for i in (0..size).step_by(me.read_size) {
                     let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = u8::from_le_bytes(bytes);
-                    value.push(read_value);
+                    if read_value != me.invalid_value as u8 {
+                        value.push(read_value);
+                    } else {
+                        invalid_count += 1;
+                    }
                 }
-                Value::NumberValueVecU8(value)
+                if invalid_count == size {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueVecU8(value)
+                }
             } else {
                 let value = u8::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as u8 {
@@ -513,5 +547,4 @@ impl BaseType {
         }
         panic!("Unknown type {}", value)
     }
-
 }
