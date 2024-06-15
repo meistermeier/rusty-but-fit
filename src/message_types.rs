@@ -28,10 +28,7 @@ impl MessageDefinition {
             }
         }
         (
-            Message {
-                message_type: self.message_type.clone(),
-                data: data_map,
-            },
+            Message::from(self.message_type.clone(), data_map),
             position,
         )
     }
