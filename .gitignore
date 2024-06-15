@@ -1,4 +1,8 @@
-/target
+target
 .idea
 activity2.fit
+
+# tools
+tools/garmin-sdk-xlsx-deserializer/target
+tools/garmin-sdk-xlsx-deserializer/Profile.xlsx
 
