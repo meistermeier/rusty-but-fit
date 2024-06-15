@@ -3,7 +3,6 @@
 extern crate derive_builder;
 
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -90,7 +89,6 @@ fn main() {
     }
 }
 
-// #[derive(Serialize)]
 struct Message {
     message_type: MessageType,
     data: HashMap<Field, Value>,
@@ -192,7 +190,7 @@ fn read_content(buffer: &Vec<u8>, args: &Cli) -> Info {
                 //println!("\t field definition number {}", field_definition_number);
                 let field_length = buffer[current_position + i2 + 1]; // as i32;
                 let base_type_value = buffer[current_position + i2 + 2];
-                let field = Field::resolve2(&local_message_type, field_definition_number);
+                let field = Field::resolve(&local_message_type, field_definition_number);
                 let field_definition = FieldDefinition {
                     field,
                     number: field_definition_number,

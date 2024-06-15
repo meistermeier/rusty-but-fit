@@ -26,7 +26,7 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn resolve(enum_value: &u32) -> &str {
+    pub fn resolve(_enum_value: &u32) -> &str {
         "numeric value"
     }
 }
@@ -34,7 +34,7 @@ impl Value {
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         match self {
-            Value::EnumValue(value) => serializer.serialize_str("<becoming an enum>"),
+            Value::EnumValue(_) => serializer.serialize_str("<becoming an enum>"),
             Value::NumberValueU64(value) => serializer.serialize_u64(value.clone()),
             Value::NumberValueU16(value) => serializer.serialize_u16(value.clone()),
             Value::NumberValueVecU16(value) => serializer.serialize_some(value),

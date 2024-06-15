@@ -1,5 +1,8 @@
+#![allow(dead_code)]
 use std::fmt;
 use std::fmt::{Display, Formatter};
+
+// a semi auto-generated list of all enumerations in the SDK
 crate::key_value_enum! {
 	pub enum File { 
 		Device = 1,

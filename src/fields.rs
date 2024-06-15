@@ -43,22 +43,10 @@ impl Serialize for Field {
 }
 
 impl Field {
-    const fn from(name: &'static str) -> Self {
-        Field::from_with_converter(name, |value| format!("Cannot translate {}", value))
-    }
-    const fn from_with_converter(name: &'static str, translate_enum: fn(&u32) -> String) -> Self {
+    const fn from(name: &'static str, translate_enum: fn(&u32) -> String) -> Self {
         Field {
             name,
             translate_enum,
-        }
-    }
-    const fn from_with_converter_and_dings(
-        name: &'static str,
-        translate_enum_with_dings: fn(&Field, &u32) -> String,
-    ) -> Self {
-        Field {
-            name,
-            translate_enum: |value| "no converter".to_string(),
         }
     }
 
