@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use serde_with::serde_derive::Serialize;
 
-use crate::{Cli, Message};
 use crate::data_types::{BaseType, Value};
 use crate::fields::Field;
+use crate::fit_file::FitFileConfig;
+use crate::Message;
 
 pub struct MessageDefinition {
     pub message_type: MessageType,
@@ -12,9 +13,9 @@ pub struct MessageDefinition {
 }
 
 impl MessageDefinition {
-    pub fn read(&self, current_position: &usize, buffer: &Vec<u8>, args: &Cli) -> (Message, usize) {
-        let print_unknown = args.unknown;
-        let print_invalid = args.invalid;
+    pub fn read(&self, current_position: &usize, buffer: &Vec<u8>, args: &FitFileConfig) -> (Message, usize) {
+        let print_unknown = args.unknown_fields;
+        let print_invalid = args.invalid_fields;
         let mut position = current_position.clone();
         let mut data_map = HashMap::new();
         for field_definition in self.fields.iter().clone() {

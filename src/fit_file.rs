@@ -1,12 +1,19 @@
 use std::collections::HashMap;
+
 use itertools::Itertools;
 use serde_with::serde_derive::Serialize;
-use crate::Cli;
+
 use crate::data_types::BaseType;
 use crate::fields::Field;
 use crate::message::{Header, Message};
 use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 
+pub struct FitFileConfig {
+    pub debug: bool,
+    pub unknown_fields: bool,
+    pub unknown_messages: bool,
+    pub invalid_fields: bool,
+}
 #[derive(Serialize)]
 pub struct FitFile {
     header: Header,
@@ -27,7 +34,7 @@ impl FitFile {
             .counts_by(|message| message.message_type.name.to_string())
     }
 
-    pub fn read_content(buffer: &Vec<u8>, args: &Cli) -> FitFile {
+    pub fn from(buffer: &Vec<u8>, args: &FitFileConfig) -> FitFile {
         let debug = args.debug;
         let header_info = &buffer[0..14];
         let header = Header::read_header(header_info);
@@ -53,7 +60,7 @@ impl FitFile {
             let developer_flag: u8 = buffer[current_position] >> 5 & 1;
             let local_message_number: u8 = buffer[current_position] & 0x0F;
             if header_type == 1 {
-                println!("!!Compressed timestamp header needs special handling");
+                panic!("!! Not implemented !! Compressed timestamp header needs special handling");
             }
             let parsed_message_type: u8 = buffer[current_position] >> 6 & 1;
             current_position += 1;
@@ -66,7 +73,6 @@ impl FitFile {
                 let type_f2 = buffer[current_position + 1];
                 let local_message_type_value: u16 = type_f1 as u16 + type_f2 as u16;
                 let local_message_type = MessageType::resolve(local_message_type_value);
-                //println!("Local message type {:?} ({})", local_message_type.name, local_message_type_value);
 
                 current_position += 2; // skip the header part besides the last byte for the field number
                 let number_of_fields: u8 = buffer[current_position];
@@ -75,7 +81,6 @@ impl FitFile {
                 for i in 0..number_of_fields {
                     let i2 = (i as i32 * 3) as usize;
                     let field_definition_number = buffer[current_position + i2 + 0];
-                    //println!("\t field definition number {}", field_definition_number);
                     let field_length = buffer[current_position + i2 + 1]; // as i32;
                     let base_type_value = buffer[current_position + i2 + 2];
                     let field = Field::resolve(&local_message_type, field_definition_number);
@@ -92,8 +97,7 @@ impl FitFile {
                 if developer_flag == 1 {
                     let number_of_developer_fields: u8 = buffer[current_position];
                     if number_of_developer_fields > 0 {
-                        println!("I have dev fields");
-                        current_position += 1;
+                        panic!("!! Not implemented !! I have dev fields");
                     }
                 }
                 let definition_message = MessageDefinition {

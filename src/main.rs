@@ -6,7 +6,7 @@ use std::io::Read;
 
 use clap::{Parser, Subcommand};
 
-use crate::fit_file::FitFile;
+use crate::fit_file::{FitFile, FitFileConfig};
 use crate::message::Message;
 
 mod data_types;
@@ -58,7 +58,13 @@ fn main() {
     let mut buffer = Vec::new();
 
     reader.read_to_end(&mut buffer).unwrap();
-    let fit_file = FitFile::read_content(&buffer, &args);
+    let fit_file_config = FitFileConfig {
+        debug: args.debug,
+        unknown_fields: args.unknown,
+        unknown_messages: args.unknown,
+        invalid_fields: args.invalid,
+    };
+    let fit_file = FitFile::from(&buffer, &fit_file_config);
     match args.command {
         Commands::Summary => {
             println!("{:?}", fit_file.get_message_types());
