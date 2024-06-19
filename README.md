@@ -27,15 +27,16 @@ Options:
   -f, --file <FILE>                  FIT file to parse
   -d                                 Debug output (cannot be piped to jq)
   -m, --message-type <MESSAGE_TYPE>  Message type as enumerated from 'summary' command
-  -u, --unknown                      Output unknown fields
-  -i, --invalid                      Output invalid values
+  -u, --unknown-fields               Output unknown fields
+  -i, --invalid-values               Output invalid values
   -h, --help                         Print help
   -V, --version                      Print version
 ```
 
 ### Examples
 
-#### Output message types in the file and their count:
+#### `summary` command
+##### Output message types in the file and their count:
 ```bash
 rusty-but-fit -f activity2.fit summary
 ```
@@ -61,31 +62,27 @@ rusty-but-fit -f activity2.fit summary
   "File creator": 1
 }
 ```
-#### Get messages of a certain type
+#### `messages` command
+##### Get messages of a certain type
 ```bash
 rusty-but-fit -f activity2.fit -m "Activity" messages
 ```
 ```json
 {
-  "name": "Activity",
-  "messages": [
-    {
-      "total_timer_time": 1717468,
-      "timestamp": 1078138254,
-      "local_timestamp": 1078141854,
-      "num_sessions": 1,
-      "event": "Activity",
-      "type": "Manual",
-      "event_type": "Stop"
-    }
-  ]
+  "local_timestamp": 1078141854,
+  "num_sessions": 1,
+  "type": "Manual",
+  "event": "Activity",
+  "timestamp": 1078138254,
+  "event_type": "Stop",
+  "total_timer_time": 1717468
 }
 ```
 
-#### Read positional data from `Record` type
+##### Read positional data from `Record` type
 This might need some conversion from semicircle to degrees.
 ```bash
-rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$((2**31))" '.messages[] | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
+rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$((2**31))" '.[] | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
 ```
 ```json
 ...
@@ -111,4 +108,3 @@ rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$
 
 1. Clean up data_types to get rid of duplications.
 2. Reduce duplication/cloning of data.
-3. Create a build pipeline to create releases for various architectures.

@@ -10,9 +10,8 @@ use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 
 pub struct FitFileConfig {
     pub debug: bool,
-    pub unknown_fields: bool,
-    pub unknown_messages: bool,
-    pub invalid_fields: bool,
+    pub include_unknown_fields: bool,
+    pub include_invalid_fields: bool,
 }
 #[derive(Serialize)]
 pub struct FitFile {

@@ -69,6 +69,7 @@ impl Bool {
 pub struct BaseType {
     pub read_size: usize,
     pub type_number: u8,
+    #[allow(dead_code)]
     pub name: &'static str,
     pub invalid_value: u64,
     pub read: fn(&BaseType, data: &[u8]) -> Value,
@@ -190,12 +191,21 @@ impl BaseType {
             let size = data.len();
             if size > me.read_size {
                 let mut value: Vec<i16> = vec![];
+                let mut invalid_count = 0;
                 for i in (0..size).step_by(me.read_size) {
                     let bytes = data[i..i + me.read_size].try_into().unwrap();
                     let read_value = i16::from_le_bytes(bytes);
+                    if read_value != me.invalid_value as i16 {
                     value.push(read_value);
+                    } else {
+                        invalid_count += 1;
+                    }
                 }
-                Value::NumberValueVecS16(value)
+                if invalid_count == size {
+                    Value::Invalid
+                } else {
+                    Value::NumberValueVecS16(value)
+                }
             } else {
                 let value = i16::from_le_bytes(data.try_into().unwrap());
                 if value == me.invalid_value as i16 {

@@ -30,9 +30,9 @@ struct Cli {
     #[arg(short, long, help = "Message type as enumerated from 'summary' command")]
     message_type: Option<String>,
     #[arg(short, long, help = "Output unknown fields")]
-    unknown: bool,
+    unknown_fields: bool,
     #[arg(short, long, help = "Output invalid values")]
-    invalid: bool,
+    invalid_values: bool,
 }
 
 #[derive(Subcommand)]
@@ -58,9 +58,8 @@ fn main() {
     reader.read_to_end(&mut buffer).unwrap();
     let fit_file_config = FitFileConfig {
         debug: args.debug,
-        unknown_fields: args.unknown,
-        unknown_messages: args.unknown,
-        invalid_fields: args.invalid,
+        include_unknown_fields: args.unknown_fields,
+        include_invalid_fields: args.invalid_values,
     };
     let fit_file = FitFile::from(&buffer, &fit_file_config);
     match args.command {

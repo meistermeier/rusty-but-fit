@@ -14,8 +14,8 @@ pub struct MessageDefinition {
 
 impl MessageDefinition {
     pub fn read(&self, current_position: &usize, buffer: &Vec<u8>, args: &FitFileConfig) -> (Message, usize) {
-        let print_unknown = args.unknown_fields;
-        let print_invalid = args.invalid_fields;
+        let print_unknown = args.include_unknown_fields;
+        let print_invalid = args.include_invalid_fields;
         let mut position = current_position.clone();
         let mut data_map = HashMap::new();
         for field_definition in self.fields.iter().clone() {
@@ -37,6 +37,7 @@ impl MessageDefinition {
 
 pub struct FieldDefinition {
     pub field: Field,
+    #[allow(dead_code)]
     pub number: u8, // still here for debugging purposes
     pub size: u8,
     pub base_type: BaseType,
