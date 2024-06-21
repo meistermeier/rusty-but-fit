@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use serde_with::serde_derive::Serialize;
+
+use serde::Serialize;
 
 use crate::data_types::BaseType;
 use crate::fields::Field;

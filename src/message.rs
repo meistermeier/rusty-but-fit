@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use serde::ser::{SerializeMap, SerializeStruct};
-use serde::{Serialize, Serializer};
-use serde_with::serde_derive::Serialize;
+use serde::Serializer;
+use serde::Serialize;
 
 use crate::data_types::Value;
 use crate::fields::Field;
