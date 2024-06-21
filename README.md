@@ -6,9 +6,9 @@ The tool itself parses .FIT files and converts it to JSON-formatted messages.
 
 At the moment heavy work in progress... but you can already try it out.
 
-## Build
+## Install
 ```bash
-cargo build [--release]
+cargo install rusty-but-fit
 ```
 
 ## Commands
@@ -19,18 +19,17 @@ Usage: rusty-but-fit [OPTIONS] --file <FILE> <COMMAND>
 
 Commands:
   summary   Create summary of all messages and their count
-  messages  Return messages defined with the -m option
+  messages  Return messages defined by the -m parameter
   raw       Outputs all messages, incl. unknown messages and invalid fields
   help      Print this message or the help of the given subcommand(s)
 
 Options:
-  -f, --file <FILE>                    FIT file to parse
-  -d                                   Debug output (cannot be piped to jq)
-  -m, --message-types <MESSAGE_TYPES>  Message types as enumerated from 'summary' command. Can be repeated for multiple messages.
-  -u, --unknown-fields                 Output unknown fields
-  -i, --invalid-values                 Output invalid values
-  -h, --help                           Print help
-  -V, --version                        Print version
+  -f, --file <FILE>     FIT file to parse
+  -d                    Debug output (cannot be piped to jq)
+  -u, --unknown-fields  Output unknown fields
+  -i, --invalid-values  Output invalid values
+  -h, --help            Print help
+  -V, --version         Print version
 ```
 
 ### Examples
@@ -63,9 +62,20 @@ rusty-but-fit -f activity2.fit summary
 }
 ```
 #### `messages` command
+
+##### `messages` arguments
+```text
+Return messages defined by the -m parameter
+
+Usage: rusty-but-fit --file <FILE> messages [OPTIONS]
+
+Options:
+  -m, --message_type <MESSAGE_TYPE>  Message types as enumerated from 'summary' command. Can be repeated for multiple messages.
+  -h, --help                         Print help
+```
 ##### Get messages of a certain type
 ```bash
-rusty-but-fit -f activity2.fit -m "Activity" messages
+rusty-but-fit -f activity2.fit messages -m "Activity"
 ```
 ```json
 {
@@ -82,7 +92,7 @@ rusty-but-fit -f activity2.fit -m "Activity" messages
 ##### Read positional data from `Record` type
 This might need some conversion from semicircle to degrees.
 ```bash
-rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$((2**31))" '.[].message | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
+rusty-but-fit -f activity2.fit messages -m 'Record' | jq --argjson conversion "$((2**31))" '.[].message | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
 ```
 ```json
 ...

@@ -37,7 +37,7 @@ struct Cli {
 enum Commands {
     #[command(about = "Create summary of all messages and their count")]
     Summary,
-    #[command(about = "Return messages defined with the -m option")]
+    #[command(about = "Return messages defined by the -m parameter")]
     Messages(MessagesArgs),
     #[command(about = "Outputs all messages, incl. unknown messages and invalid fields")]
     Raw,
