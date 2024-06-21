@@ -1,6 +1,7 @@
 target
 .idea
 activity2.fit
+.DS_Store
 
 # tools
 tools/garmin-sdk-xlsx-deserializer/target
