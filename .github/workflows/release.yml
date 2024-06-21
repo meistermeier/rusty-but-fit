@@ -42,8 +42,10 @@ jobs:
           path: target/release/rusty-but-fit${{ matrix.file-suffix }}
       - name: download from latest release
         uses: actions/download-artifact@v4
+        with:
+          name: rusty-but-fit-${{ matrix.suffix }}
       - name: check content
-        run: ls -al
+        run: ls -alR rusty-but-fit-${{ matrix.suffix }}
 #      - name: attach to release
 #        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
