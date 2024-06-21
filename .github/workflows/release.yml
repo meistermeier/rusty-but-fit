@@ -40,10 +40,6 @@ jobs:
         with:
           name: rusty-but-fit-${{ matrix.suffix }}
           path: target/release/rusty-but-fit${{ matrix.file-suffix }}
-  addbinaries:
-    name: Add binaries
-    runs-on: ubuntu-latest
-    steps:
       - name: download from latest release
         uses: actions/download-artifact@v4
       - name: attach to release
