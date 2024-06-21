@@ -5,8 +5,8 @@ use serde_with::serde_derive::Serialize;
 use crate::data_types::BaseType;
 use crate::fields::Field;
 use crate::fit_file::FitFileConfig;
-use crate::Message;
 use crate::message::MessageMap;
+use crate::Message;
 
 pub struct MessageDefinition {
     pub message_type: MessageType,
@@ -35,7 +35,10 @@ impl MessageDefinition {
                 data_map.insert(data_field.clone(), value.clone());
             }
         }
-        (Message::from(self.message_type.clone(), MessageMap {data: data_map}), position)
+        (
+            Message::from(self.message_type.clone(), MessageMap { data: data_map }),
+            position,
+        )
     }
 }
 

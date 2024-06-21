@@ -30,7 +30,7 @@ struct Cli {
     #[arg(
         short,
         long,
-        help = "Message types as enumerated from 'summary' command"
+        help = "Message types as enumerated from 'summary' command. Can be repeated for multiple messages."
     )]
     message_types: Vec<String>,
     #[arg(short, long, help = "Output unknown fields")]
@@ -41,9 +41,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Create summary of all messages and their count")]
     Summary,
+    #[command(about = "Return messages defined with the -m option")]
     Messages,
-    Dump,
+    #[command(about = "Outputs all messages, incl. unknown messages and invalid fields")]
     Raw,
 }
 
@@ -86,7 +88,6 @@ fn main() {
             let result = fit_file.get_messages(args.message_types);
             println!("{}", serde_json::to_string(&result).unwrap());
         }
-        Commands::Dump => println!("{}", serde_json::to_string(&fit_file).unwrap()),
         Commands::Raw => println!("{}", serde_json::to_string(&fit_file).unwrap()),
     }
 }

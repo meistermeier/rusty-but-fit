@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use serde::{Serialize, Serializer};
 use serde::ser::{SerializeMap, SerializeStruct};
+use serde::{Serialize, Serializer};
 use serde_with::serde_derive::Serialize;
 
 use crate::data_types::Value;
@@ -98,19 +98,21 @@ impl Clone for Message {
 }
 
 pub struct MessageMap {
-    pub data: HashMap<Field, Value>
+    pub data: HashMap<Field, Value>,
 }
 
 impl Clone for MessageMap {
     fn clone(&self) -> Self {
-       MessageMap {data: self.data.clone()}
+        MessageMap {
+            data: self.data.clone(),
+        }
     }
 }
 
 impl Serialize for MessageMap {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer
+        S: Serializer,
     {
         let mut map = serializer
             .serialize_map(Option::from(self.data.len()))
@@ -125,12 +127,12 @@ impl Serialize for MessageMap {
                     } else {
                         let enum_field_value = &u32::from(value[0]);
                         match entry.0 {
-                            Field::Unknown(_) => {map.serialize_value(value).unwrap()}
+                            Field::Unknown(_) => map.serialize_value(value).unwrap(),
                             Field::EnumField(enum_field) => {
                                 let string = (enum_field.translate_enum)(enum_field_value);
                                 map.serialize_value(&string).unwrap()
                             }
-                            _ => unreachable!("Welcome to the abyss")
+                            _ => unreachable!("Welcome to the abyss"),
                         }
                     }
                 }
@@ -146,8 +148,12 @@ impl Serialize for Message {
     where
         S: Serializer,
     {
-        let mut serialized = serializer.serialize_struct(self.message_type.name, 2).unwrap();
-        serialized.serialize_field("message_type", self.message_type.name).unwrap();
+        let mut serialized = serializer
+            .serialize_struct(self.message_type.name, 2)
+            .unwrap();
+        serialized
+            .serialize_field("message_type", self.message_type.name)
+            .unwrap();
         serialized.serialize_field("message", &self.data).unwrap();
         serialized.end()
     }

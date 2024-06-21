@@ -18,19 +18,19 @@ Parsing for Garmin's FIT file format
 Usage: rusty-but-fit [OPTIONS] --file <FILE> <COMMAND>
 
 Commands:
-  summary
-  messages
-  dump
+  summary   Create summary of all messages and their count
+  messages  Return messages defined with the -m option
+  raw       Outputs all messages, incl. unknown messages and invalid fields
   help      Print this message or the help of the given subcommand(s)
 
 Options:
-  -f, --file <FILE>                  FIT file to parse
-  -d                                 Debug output (cannot be piped to jq)
-  -m, --message-type <MESSAGE_TYPE>  Message type as enumerated from 'summary' command
-  -u, --unknown-fields               Output unknown fields
-  -i, --invalid-values               Output invalid values
-  -h, --help                         Print help
-  -V, --version                      Print version
+  -f, --file <FILE>                    FIT file to parse
+  -d                                   Debug output (cannot be piped to jq)
+  -m, --message-types <MESSAGE_TYPES>  Message types as enumerated from 'summary' command. Can be repeated for multiple messages.
+  -u, --unknown-fields                 Output unknown fields
+  -i, --invalid-values                 Output invalid values
+  -h, --help                           Print help
+  -V, --version                        Print version
 ```
 
 ### Examples
@@ -82,7 +82,7 @@ rusty-but-fit -f activity2.fit -m "Activity" messages
 ##### Read positional data from `Record` type
 This might need some conversion from semicircle to degrees.
 ```bash
-rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$((2**31))" '.[] | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
+rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$((2**31))" '.[].message | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
 ```
 ```json
 ...
@@ -104,7 +104,3 @@ rusty-but-fit -f activity2.fit -m 'Record' messages | jq --argjson conversion "$
 }
 ...
 ```
-## Larger open tasks
-
-1. Clean up data_types to get rid of duplications.
-2. Reduce duplication/cloning of data.

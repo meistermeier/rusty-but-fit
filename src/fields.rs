@@ -40,8 +40,7 @@ impl Hash for UnknownField {
 }
 impl PartialEq for UnknownField {
     fn eq(&self, other: &Self) -> bool {
-        self.message_number == other.message_number &&
-            self.field_number == other.field_number
+        self.message_number == other.message_number && self.field_number == other.field_number
     }
 }
 
