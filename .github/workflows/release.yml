@@ -35,3 +35,8 @@ jobs:
         with:
           name: rusty-but-fit-${{ matrix.suffix }}
           path: target/release/rusty-but-fit${{ matrix.file-suffix }}
+      - name: release upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run:
+          gh release upload ${{ github.ref }} target/release/rusty-but-fit${{ matrix.file-suffix }}
