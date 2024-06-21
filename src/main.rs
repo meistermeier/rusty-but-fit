@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 use crate::fit_file::{FitFile, FitFileConfig};
 use crate::message::Message;
@@ -27,12 +27,6 @@ struct Cli {
     file: String,
     #[arg(short, help = "Debug output (cannot be piped to jq)")]
     debug: bool,
-    #[arg(
-        short,
-        long,
-        help = "Message types as enumerated from 'summary' command. Can be repeated for multiple messages."
-    )]
-    message_types: Vec<String>,
     #[arg(short, long, help = "Output unknown fields")]
     unknown_fields: bool,
     #[arg(short, long, help = "Output invalid values")]
@@ -44,9 +38,20 @@ enum Commands {
     #[command(about = "Create summary of all messages and their count")]
     Summary,
     #[command(about = "Return messages defined with the -m option")]
-    Messages,
+    Messages(MessagesArgs),
     #[command(about = "Outputs all messages, incl. unknown messages and invalid fields")]
     Raw,
+}
+
+#[derive(Args)]
+struct MessagesArgs {
+    #[arg(
+        short,
+        long = "message_type",
+        value_name = "MESSAGE_TYPE",
+        help = "Message types as enumerated from 'summary' command. Can be repeated for multiple messages.",
+    )]
+    message_types: Vec<String>,
 }
 
 fn main() {
@@ -84,8 +89,8 @@ fn main() {
     let fit_file = FitFile::from(&buffer, &fit_file_config);
     match args.command {
         Commands::Summary => println!("{:?}", fit_file.get_message_types()),
-        Commands::Messages => {
-            let result = fit_file.get_messages(args.message_types);
+        Commands::Messages(messages_args) => {
+            let result = fit_file.get_messages(messages_args.message_types);
             println!("{}", serde_json::to_string(&result).unwrap());
         }
         Commands::Raw => println!("{}", serde_json::to_string(&fit_file).unwrap()),
