@@ -11,7 +11,7 @@ use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 pub struct FitFileConfig {
     pub debug: bool,
     pub include_unknown_fields: bool,
-    pub include_invalid_fields: bool,
+    pub include_invalid_values: bool,
 }
 #[derive(Serialize)]
 pub struct FitFile {
@@ -20,10 +20,10 @@ pub struct FitFile {
 }
 
 impl FitFile {
-    pub fn get_messages(&self, message_type: &str) -> Vec<&Message> {
+    pub fn get_messages(&self, message_types: Vec<String>) -> Vec<&Message> {
         let vec = &self.messages;
         vec.into_iter()
-            .filter(|message| message.message_type.name.eq(message_type))
+            .filter(|message| message_types.contains(&message.message_type.name.to_string()))
             .collect_vec()
     }
 
@@ -33,8 +33,8 @@ impl FitFile {
             .counts_by(|message| message.message_type.name.to_string())
     }
 
-    pub fn from(buffer: &Vec<u8>, args: &FitFileConfig) -> FitFile {
-        let debug = args.debug;
+    pub fn from(buffer: &Vec<u8>, config: &FitFileConfig) -> FitFile {
+        let debug = config.debug;
         let header_info = &buffer[0..14];
         let header = Header::read_header(header_info);
         let mut messages: Vec<Message> = Vec::new();
@@ -80,14 +80,19 @@ impl FitFile {
                 for i in 0..number_of_fields {
                     let i2 = (i as i32 * 3) as usize;
                     let field_definition_number = buffer[current_position + i2 + 0];
-                    let field_length = buffer[current_position + i2 + 1]; // as i32;
+                    let field_length = buffer[current_position + i2 + 1];
                     let base_type_value = buffer[current_position + i2 + 2];
-                    let field = Field::resolve(&local_message_type, field_definition_number);
+                    let base_type = BaseType::parse(base_type_value);
+                    let field = if base_type.is_enum() {
+                        Field::resolve_enum(&local_message_type, field_definition_number)
+                    } else {
+                        Field::resolve_field(&local_message_type, field_definition_number)
+                    };
                     let field_definition = FieldDefinition {
                         field,
                         number: field_definition_number,
                         size: field_length,
-                        base_type: BaseType::parse(base_type_value),
+                        base_type,
                     };
                     fields.push(field_definition);
                 }
@@ -107,7 +112,7 @@ impl FitFile {
             } else {
                 let definition_message = local_message_types.get(&local_message_number).unwrap();
 
-                let message = definition_message.read(&current_position, buffer, args);
+                let message = definition_message.read(&current_position, buffer, config);
                 current_position = message.1;
                 messages.push(message.0);
             }

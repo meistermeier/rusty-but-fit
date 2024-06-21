@@ -31,13 +31,67 @@ macro_rules! key_value_enum {
 #[macro_export]
 macro_rules! expand_fields {
     ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:literal, $enum_type:ident)+)  => {
-        pub fn resolve(message_type: &MessageType, i: u8) -> Field {
-            return match (message_type.number, i) {
+        pub fn resolve_enum(message_type: &MessageType, field_number: u8) -> Field {
+            let message_number = message_type.number;
+            return match (message_type.number, field_number) {
                 $(
-                    ($MESG_NUM, $FIELD_NUM) => Field::from($field_name, |value| $enum_type::resolve(value).to_string()),
+                    ($MESG_NUM, $FIELD_NUM) => Field::EnumField(EnumField::from($field_name, |value| $enum_type::resolve(value).to_string())),
                 )+
-                _ => Field::from("unknown", |_| "unknown".to_string()),
+                _ => Field::Unknown(UnknownField { message_number, field_number }),
             };
         }
     };
+    ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:literal)+)  => {
+        pub fn resolve_field(message_type: &MessageType, field_number: u8) -> Field {
+            let message_number = message_type.number;
+            return match (message_type.number, field_number) {
+                $(
+                    ($MESG_NUM, $FIELD_NUM) => Field::ValueField(ValueField::from($field_name)),
+                )+
+                _ => Field::Unknown(UnknownField { message_number, field_number }),
+            };
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! base_type {
+    ($($NAME:ident, $READ_SIZE:literal, $TYPE_NUMBER:literal, $INVALID_VALUE:literal, $DATA_TYPE:ty, $VALUE_TYPE:ident, $VALUE_TYPE_VEC:ident)+) => {
+        $(
+    pub const $NAME: BaseType = BaseType {
+        read_size: $READ_SIZE,
+        type_number:$TYPE_NUMBER,
+        invalid_value: $INVALID_VALUE,
+        read: |me, data| {
+            let size = data.len();
+            // also create vec if type is enum
+            if size > me.read_size || me.type_number == 0 {
+                let mut value: Vec<$DATA_TYPE> = vec![];
+                let mut invalid_count = 0;
+                for i in (0..size).step_by(me.read_size) {
+                    let bytes = data[i..i + me.read_size].try_into().unwrap();
+                    let read_value = <$DATA_TYPE>::from_le_bytes(bytes);
+                    if read_value != me.invalid_value as $DATA_TYPE {
+                        value.push(read_value);
+                    } else {
+                        invalid_count += 1;
+                    }
+                }
+                if invalid_count == size {
+                    Value::Invalid
+                } else {
+                    Value::$VALUE_TYPE_VEC(value)
+                }
+            } else {
+                let value = <$DATA_TYPE>::from_le_bytes(data.try_into().unwrap());
+                if value == me.invalid_value as $DATA_TYPE {
+                    Value::Invalid
+                } else {
+                    Value::$VALUE_TYPE(value)
+                }
+            }
+        },
+    };
+      )+
+    }
 }

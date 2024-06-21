@@ -1,39 +1,88 @@
-use crate::data_types::{Bool, Value};
-use serde::{Serialize, Serializer};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::string::ToString;
 
+use serde::{Serialize, Serializer};
+
 use crate::message_types::MessageType;
 use crate::types::*;
 
+#[derive(Clone, Eq, PartialEq, Hash)]
+pub enum Field {
+    Unknown(UnknownField),
+    EnumField(EnumField),
+    ValueField(ValueField),
+}
+impl Serialize for Field {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Field::Unknown(value) => serializer.serialize_some(value),
+            Field::EnumField(value) => serializer.serialize_str(&value.name),
+            Field::ValueField(value) => serializer.serialize_str(&value.name),
+        }
+    }
+}
+
 #[derive(Clone)]
-pub struct Field {
+pub struct UnknownField {
+    pub message_number: u16,
+    pub field_number: u8,
+}
+
+impl Hash for UnknownField {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.message_number.hash(state);
+        self.field_number.hash(state);
+    }
+}
+impl PartialEq for UnknownField {
+    fn eq(&self, other: &Self) -> bool {
+        self.message_number == other.message_number &&
+            self.field_number == other.field_number
+    }
+}
+
+impl Eq for UnknownField {}
+impl Serialize for UnknownField {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let serialized = format!("unknown {}/{}", self.message_number, self.field_number);
+
+        serializer.serialize_str(serialized.as_str())
+    }
+}
+#[derive(Clone)]
+pub struct EnumField {
     pub name: &'static str,
     pub translate_enum: fn(&u32) -> String,
 }
 
-impl Hash for Field {
+impl EnumField {
+    const fn from(name: &'static str, translate_enum: fn(&u32) -> String) -> Self {
+        EnumField {
+            name,
+            translate_enum,
+        }
+    }
+}
+impl Hash for EnumField {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
     }
 }
-
-impl PartialEq for Field {
+impl PartialEq for EnumField {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
     }
 }
 
-impl Eq for Field {}
-
-impl Debug for Field {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.name)
-    }
-}
-
-impl Serialize for Field {
+impl Eq for EnumField {}
+impl Serialize for EnumField {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -42,96 +91,1131 @@ impl Serialize for Field {
     }
 }
 
+#[derive(Clone)]
+pub struct ValueField {
+    pub name: &'static str,
+}
+
+impl Hash for ValueField {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+    }
+}
+
+impl PartialEq for ValueField {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for ValueField {}
+
+impl Debug for ValueField {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name)
+    }
+}
+
+impl Serialize for ValueField {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.name)
+    }
+}
+
+impl ValueField {
+    const fn from(name: &'static str) -> Self {
+        ValueField { name }
+    }
+}
+
 impl Field {
-    const fn from(name: &'static str, translate_enum: fn(&u32) -> String) -> Self {
-        Field {
-            name,
-            translate_enum,
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            Field::Unknown(_) => true,
+            _ => false,
         }
     }
 
-    pub fn is_unknown(&self) -> bool {
-        self.name.eq("unknown")
+    crate::expand_fields! {
+    147,2,"thing"
+    0,2,"product"
+    0,3,"serial_number"
+    0,5,"number"
+    0,8,"product_name"
+    49,0,"software_version"
+    49,1,"hardware_version"
+    162,0,"fractional_timestamp"
+    162,2,"fractional_system_timestamp"
+    162,4,"timestamp_ms"
+    162,5,"system_timestamp_ms"
+    35,3,"version"
+    35,5,"part_number"
+    106,1,"product"
+    1,0,"languages"
+    37,2,"directory"
+    37,3,"max_count"
+    37,4,"max_size"
+    38,3,"count"
+    39,2,"field_num"
+    39,3,"count"
+    2,0,"active_time_zone"
+    2,1,"utc_offset"
+    2,2,"time_offset"
+    2,5,"time_zone_offset"
+    2,36,"activity_tracker_enabled"
+    2,40,"pages_enabled"
+    2,46,"move_alert_enabled"
+    2,57,"default_page"
+    2,58,"autosync_min_steps"
+    2,59,"autosync_min_time"
+    2,80,"lactate_threshold_autodetect_enabled"
+    2,86,"ble_auto_upload_enabled"
+    2,94,"number_of_screens"
+    3,0,"friendly_name"
+    3,2,"age"
+    3,3,"height"
+    3,4,"weight"
+    3,8,"resting_heart_rate"
+    3,9,"default_max_running_heart_rate"
+    3,10,"default_max_biking_heart_rate"
+    3,11,"default_max_heart_rate"
+    3,23,"global_id"
+    3,31,"user_running_step_length"
+    3,32,"user_walking_step_length"
+    3,49,"dive_count"
+    4,0,"enabled"
+    4,1,"hrm_ant_id"
+    4,2,"log_hrv"
+    4,3,"hrm_ant_id_trans_type"
+    5,0,"enabled"
+    5,1,"sdm_ant_id"
+    5,2,"sdm_cal_factor"
+    5,3,"odometer"
+    5,4,"speed_source"
+    5,5,"sdm_ant_id_trans_type"
+    5,7,"odometer_rollover"
+    6,0,"name"
+    6,3,"odometer"
+    6,4,"bike_spd_ant_id"
+    6,5,"bike_cad_ant_id"
+    6,6,"bike_spdcad_ant_id"
+    6,7,"bike_power_ant_id"
+    6,8,"custom_wheelsize"
+    6,9,"auto_wheelsize"
+    6,10,"bike_weight"
+    6,11,"power_cal_factor"
+    6,12,"auto_wheel_cal"
+    6,13,"auto_power_zero"
+    6,14,"id"
+    6,15,"spd_enabled"
+    6,16,"cad_enabled"
+    6,17,"spdcad_enabled"
+    6,18,"power_enabled"
+    6,19,"crank_length"
+    6,20,"enabled"
+    6,21,"bike_spd_ant_id_trans_type"
+    6,22,"bike_cad_ant_id_trans_type"
+    6,23,"bike_spdcad_ant_id_trans_type"
+    6,24,"bike_power_ant_id_trans_type"
+    6,37,"odometer_rollover"
+    6,38,"front_gear_num"
+    6,39,"front_gear"
+    6,40,"rear_gear_num"
+    6,41,"rear_gear"
+    6,44,"shimano_di2_enabled"
+    127,0,"bluetooth_enabled"
+    127,1,"bluetooth_le_enabled"
+    127,2,"ant_enabled"
+    127,3,"name"
+    127,4,"live_tracking_enabled"
+    127,5,"weather_conditions_enabled"
+    127,6,"weather_alerts_enabled"
+    127,7,"auto_activity_upload_enabled"
+    127,8,"course_download_enabled"
+    127,9,"workout_download_enabled"
+    127,10,"gps_ephemeris_download_enabled"
+    127,11,"incident_detection_enabled"
+    127,12,"grouptrack_enabled"
+    159,1,"layout"
+    216,2,"time_in_hr_zone"
+    216,3,"time_in_speed_zone"
+    216,4,"time_in_cadence_zone"
+    216,5,"time_in_power_zone"
+    216,6,"hr_zone_high_boundary"
+    216,7,"speed_zone_high_boundary"
+    216,8,"cadence_zone_high_bondary"
+    216,9,"power_zone_high_boundary"
+    216,11,"max_heart_rate"
+    216,12,"resting_heart_rate"
+    216,13,"threshold_heart_rate"
+    216,15,"functional_threshold_power"
+    7,1,"max_heart_rate"
+    7,2,"threshold_heart_rate"
+    7,3,"functional_threshold_power"
+    12,3,"name"
+    8,1,"high_bpm"
+    8,2,"name"
+    53,0,"high_value"
+    53,1,"name"
+    131,0,"high_value"
+    131,1,"name"
+    9,1,"high_value"
+    9,2,"name"
+    10,1,"high_bpm"
+    10,2,"calories"
+    10,3,"fat_calories"
+    258,0,"name"
+    258,2,"gf_low"
+    258,3,"gf_high"
+    258,5,"water_density"
+    258,6,"po2_warn"
+    258,7,"po2_critical"
+    258,8,"po2_deco"
+    258,9,"safety_stop_enabled"
+    258,10,"bottom_depth"
+    258,11,"bottom_time"
+    258,12,"apnea_countdown_enabled"
+    258,13,"apnea_countdown_time"
+    258,15,"backlight_brightness"
+    258,17,"repeat_dive_interval"
+    258,18,"safety_stop_time"
+    258,20,"heart_rate_source"
+    258,23,"ccr_low_setpoint"
+    258,24,"ccr_low_setpoint_depth"
+    258,26,"ccr_high_setpoint"
+    258,27,"ccr_high_setpoint_depth"
+    258,30,"up_key_enabled"
+    258,36,"last_stop_multiple"
+    262,0,"depth"
+    262,1,"time"
+    262,2,"enabled"
+    262,6,"id"
+    262,7,"popup_enabled"
+    262,8,"trigger_on_descent"
+    262,9,"trigger_on_ascent"
+    262,10,"repeating"
+    262,11,"speed"
+    393,0,"depth"
+    393,1,"time"
+    393,2,"enabled"
+    393,6,"id"
+    393,7,"popup_enabled"
+    393,8,"trigger_on_descent"
+    393,9,"trigger_on_ascent"
+    393,10,"repeating"
+    393,11,"speed"
+    259,0,"helium_content"
+    259,1,"oxygen_content"
+    15,5,"value"
+    15,6,"repeat"
+    15,7,"target_value"
+    15,9,"recurrence_value"
+    15,10,"enabled"
+    34,0,"total_timer_time"
+    34,1,"num_sessions"
+    34,6,"event_group"
+    18,3,"start_position_lat"
+    18,4,"start_position_long"
+    18,7,"total_elapsed_time"
+    18,8,"total_timer_time"
+    18,9,"total_distance"
+    18,10,"total_cycles"
+    18,11,"total_calories"
+    18,13,"total_fat_calories"
+    18,14,"avg_speed"
+    18,15,"max_speed"
+    18,16,"avg_heart_rate"
+    18,17,"max_heart_rate"
+    18,18,"avg_cadence"
+    18,19,"max_cadence"
+    18,20,"avg_power"
+    18,21,"max_power"
+    18,22,"total_ascent"
+    18,23,"total_descent"
+    18,24,"total_training_effect"
+    18,25,"first_lap_index"
+    18,26,"num_laps"
+    18,27,"event_group"
+    18,29,"nec_lat"
+    18,30,"nec_long"
+    18,31,"swc_lat"
+    18,32,"swc_long"
+    18,33,"num_lengths"
+    18,34,"normalized_power"
+    18,35,"training_stress_score"
+    18,36,"intensity_factor"
+    18,38,"end_position_lat"
+    18,39,"end_position_long"
+    18,41,"avg_stroke_count"
+    18,42,"avg_stroke_distance"
+    18,44,"pool_length"
+    18,45,"threshold_power"
+    18,47,"num_active_lengths"
+    18,48,"total_work"
+    18,49,"avg_altitude"
+    18,50,"max_altitude"
+    18,51,"gps_accuracy"
+    18,52,"avg_grade"
+    18,53,"avg_pos_grade"
+    18,54,"avg_neg_grade"
+    18,55,"max_pos_grade"
+    18,56,"max_neg_grade"
+    18,57,"avg_temperature"
+    18,58,"max_temperature"
+    18,59,"total_moving_time"
+    18,60,"avg_pos_vertical_speed"
+    18,61,"avg_neg_vertical_speed"
+    18,62,"max_pos_vertical_speed"
+    18,63,"max_neg_vertical_speed"
+    18,64,"min_heart_rate"
+    18,65,"time_in_hr_zone"
+    18,66,"time_in_speed_zone"
+    18,67,"time_in_cadence_zone"
+    18,68,"time_in_power_zone"
+    18,69,"avg_lap_time"
+    18,70,"best_lap_index"
+    18,71,"min_altitude"
+    18,82,"player_score"
+    18,83,"opponent_score"
+    18,84,"opponent_name"
+    18,85,"stroke_count"
+    18,86,"zone_count"
+    18,87,"max_ball_speed"
+    18,88,"avg_ball_speed"
+    18,89,"avg_vertical_oscillation"
+    18,90,"avg_stance_time_percent"
+    18,91,"avg_stance_time"
+    18,92,"avg_fractional_cadence"
+    18,93,"max_fractional_cadence"
+    18,94,"total_fractional_cycles"
+    18,95,"avg_total_hemoglobin_conc"
+    18,96,"min_total_hemoglobin_conc"
+    18,97,"max_total_hemoglobin_conc"
+    18,98,"avg_saturated_hemoglobin_percent"
+    18,99,"min_saturated_hemoglobin_percent"
+    18,100,"max_saturated_hemoglobin_percent"
+    18,101,"avg_left_torque_effectiveness"
+    18,102,"avg_right_torque_effectiveness"
+    18,103,"avg_left_pedal_smoothness"
+    18,104,"avg_right_pedal_smoothness"
+    18,105,"avg_combined_pedal_smoothness"
+    18,110,"sport_profile_name"
+    18,111,"sport_index"
+    18,112,"time_standing"
+    18,113,"stand_count"
+    18,114,"avg_left_pco"
+    18,115,"avg_right_pco"
+    18,116,"avg_left_power_phase"
+    18,117,"avg_left_power_phase_peak"
+    18,118,"avg_right_power_phase"
+    18,119,"avg_right_power_phase_peak"
+    18,120,"avg_power_position"
+    18,121,"max_power_position"
+    18,122,"avg_cadence_position"
+    18,123,"max_cadence_position"
+    18,124,"enhanced_avg_speed"
+    18,125,"enhanced_max_speed"
+    18,126,"enhanced_avg_altitude"
+    18,127,"enhanced_min_altitude"
+    18,128,"enhanced_max_altitude"
+    18,129,"avg_lev_motor_power"
+    18,130,"max_lev_motor_power"
+    18,131,"lev_battery_consumption"
+    18,132,"avg_vertical_ratio"
+    18,133,"avg_stance_time_balance"
+    18,134,"avg_step_length"
+    18,137,"total_anaerobic_training_effect"
+    18,139,"avg_vam"
+    18,140,"avg_depth"
+    18,141,"max_depth"
+    18,142,"surface_interval"
+    18,143,"start_cns"
+    18,144,"end_cns"
+    18,145,"start_n2"
+    18,146,"end_n2"
+    18,147,"avg_respiration_rate"
+    18,148,"max_respiration_rate"
+    18,149,"min_respiration_rate"
+    18,150,"min_temperature"
+    18,155,"o2_toxicity"
+    18,156,"dive_number"
+    18,168,"training_load_peak"
+    18,169,"enhanced_avg_respiration_rate"
+    18,170,"enhanced_max_respiration_rate"
+    18,180,"enhanced_min_respiration_rate"
+    18,181,"total_grit"
+    18,182,"total_flow"
+    18,183,"jump_count"
+    18,186,"avg_grit"
+    18,187,"avg_flow"
+    18,194,"avg_spo2"
+    18,195,"avg_stress"
+    18,197,"sdrr_hrv"
+    18,198,"rmssd_hrv"
+    18,199,"total_fractional_ascent"
+    18,200,"total_fractional_descent"
+    18,208,"avg_core_temperature"
+    18,209,"min_core_temperature"
+    18,210,"max_core_temperature"
+    19,3,"start_position_lat"
+    19,4,"start_position_long"
+    19,5,"end_position_lat"
+    19,6,"end_position_long"
+    19,7,"total_elapsed_time"
+    19,8,"total_timer_time"
+    19,9,"total_distance"
+    19,10,"total_cycles"
+    19,11,"total_calories"
+    19,12,"total_fat_calories"
+    19,13,"avg_speed"
+    19,14,"max_speed"
+    19,15,"avg_heart_rate"
+    19,16,"max_heart_rate"
+    19,17,"avg_cadence"
+    19,18,"max_cadence"
+    19,19,"avg_power"
+    19,20,"max_power"
+    19,21,"total_ascent"
+    19,22,"total_descent"
+    19,26,"event_group"
+    19,32,"num_lengths"
+    19,33,"normalized_power"
+    19,35,"first_length_index"
+    19,37,"avg_stroke_distance"
+    19,40,"num_active_lengths"
+    19,41,"total_work"
+    19,42,"avg_altitude"
+    19,43,"max_altitude"
+    19,44,"gps_accuracy"
+    19,45,"avg_grade"
+    19,46,"avg_pos_grade"
+    19,47,"avg_neg_grade"
+    19,48,"max_pos_grade"
+    19,49,"max_neg_grade"
+    19,50,"avg_temperature"
+    19,51,"max_temperature"
+    19,52,"total_moving_time"
+    19,53,"avg_pos_vertical_speed"
+    19,54,"avg_neg_vertical_speed"
+    19,55,"max_pos_vertical_speed"
+    19,56,"max_neg_vertical_speed"
+    19,57,"time_in_hr_zone"
+    19,58,"time_in_speed_zone"
+    19,59,"time_in_cadence_zone"
+    19,60,"time_in_power_zone"
+    19,61,"repetition_num"
+    19,62,"min_altitude"
+    19,63,"min_heart_rate"
+    19,74,"opponent_score"
+    19,75,"stroke_count"
+    19,76,"zone_count"
+    19,77,"avg_vertical_oscillation"
+    19,78,"avg_stance_time_percent"
+    19,79,"avg_stance_time"
+    19,80,"avg_fractional_cadence"
+    19,81,"max_fractional_cadence"
+    19,82,"total_fractional_cycles"
+    19,83,"player_score"
+    19,84,"avg_total_hemoglobin_conc"
+    19,85,"min_total_hemoglobin_conc"
+    19,86,"max_total_hemoglobin_conc"
+    19,87,"avg_saturated_hemoglobin_percent"
+    19,88,"min_saturated_hemoglobin_percent"
+    19,89,"max_saturated_hemoglobin_percent"
+    19,91,"avg_left_torque_effectiveness"
+    19,92,"avg_right_torque_effectiveness"
+    19,93,"avg_left_pedal_smoothness"
+    19,94,"avg_right_pedal_smoothness"
+    19,95,"avg_combined_pedal_smoothness"
+    19,98,"time_standing"
+    19,99,"stand_count"
+    19,100,"avg_left_pco"
+    19,101,"avg_right_pco"
+    19,102,"avg_left_power_phase"
+    19,103,"avg_left_power_phase_peak"
+    19,104,"avg_right_power_phase"
+    19,105,"avg_right_power_phase_peak"
+    19,106,"avg_power_position"
+    19,107,"max_power_position"
+    19,108,"avg_cadence_position"
+    19,109,"max_cadence_position"
+    19,110,"enhanced_avg_speed"
+    19,111,"enhanced_max_speed"
+    19,112,"enhanced_avg_altitude"
+    19,113,"enhanced_min_altitude"
+    19,114,"enhanced_max_altitude"
+    19,115,"avg_lev_motor_power"
+    19,116,"max_lev_motor_power"
+    19,117,"lev_battery_consumption"
+    19,118,"avg_vertical_ratio"
+    19,119,"avg_stance_time_balance"
+    19,120,"avg_step_length"
+    19,121,"avg_vam"
+    19,122,"avg_depth"
+    19,123,"max_depth"
+    19,124,"min_temperature"
+    19,136,"enhanced_avg_respiration_rate"
+    19,137,"enhanced_max_respiration_rate"
+    19,147,"avg_respiration_rate"
+    19,148,"max_respiration_rate"
+    19,149,"total_grit"
+    19,150,"total_flow"
+    19,151,"jump_count"
+    19,153,"avg_grit"
+    19,154,"avg_flow"
+    19,156,"total_fractional_ascent"
+    19,157,"total_fractional_descent"
+    19,158,"avg_core_temperature"
+    19,159,"min_core_temperature"
+    19,160,"max_core_temperature"
+    101,3,"total_elapsed_time"
+    101,4,"total_timer_time"
+    101,5,"total_strokes"
+    101,6,"avg_speed"
+    101,9,"avg_swimming_cadence"
+    101,10,"event_group"
+    101,11,"total_calories"
+    101,18,"player_score"
+    101,19,"opponent_score"
+    101,20,"stroke_count"
+    101,21,"zone_count"
+    101,22,"enhanced_avg_respiration_rate"
+    101,23,"enhanced_max_respiration_rate"
+    101,24,"avg_respiration_rate"
+    101,25,"max_respiration_rate"
+    20,0,"position_lat"
+    20,1,"position_long"
+    20,2,"altitude"
+    20,3,"heart_rate"
+    20,4,"cadence"
+    20,5,"distance"
+    20,6,"speed"
+    20,7,"power"
+    20,8,"compressed_speed_distance"
+    20,9,"grade"
+    20,10,"resistance"
+    20,11,"time_from_course"
+    20,12,"cycle_length"
+    20,13,"temperature"
+    20,17,"speed_1s"
+    20,18,"cycles"
+    20,19,"total_cycles"
+    20,28,"compressed_accumulated_power"
+    20,29,"accumulated_power"
+    20,31,"gps_accuracy"
+    20,32,"vertical_speed"
+    20,33,"calories"
+    20,39,"vertical_oscillation"
+    20,40,"stance_time_percent"
+    20,41,"stance_time"
+    20,43,"left_torque_effectiveness"
+    20,44,"right_torque_effectiveness"
+    20,45,"left_pedal_smoothness"
+    20,46,"right_pedal_smoothness"
+    20,47,"combined_pedal_smoothness"
+    20,48,"time128"
+    20,50,"zone"
+    20,51,"ball_speed"
+    20,52,"cadence256"
+    20,53,"fractional_cadence"
+    20,54,"total_hemoglobin_conc"
+    20,55,"total_hemoglobin_conc_min"
+    20,56,"total_hemoglobin_conc_max"
+    20,57,"saturated_hemoglobin_percent"
+    20,58,"saturated_hemoglobin_percent_min"
+    20,59,"saturated_hemoglobin_percent_max"
+    20,67,"left_pco"
+    20,68,"right_pco"
+    20,69,"left_power_phase"
+    20,70,"left_power_phase_peak"
+    20,71,"right_power_phase"
+    20,72,"right_power_phase_peak"
+    20,73,"enhanced_speed"
+    20,78,"enhanced_altitude"
+    20,81,"battery_soc"
+    20,82,"motor_power"
+    20,83,"vertical_ratio"
+    20,84,"stance_time_balance"
+    20,85,"step_length"
+    20,87,"cycle_length16"
+    20,91,"absolute_pressure"
+    20,92,"depth"
+    20,93,"next_stop_depth"
+    20,94,"next_stop_time"
+    20,95,"time_to_surface"
+    20,96,"ndl_time"
+    20,97,"cns_load"
+    20,98,"n2_load"
+    20,99,"respiration_rate"
+    20,108,"enhanced_respiration_rate"
+    20,114,"grit"
+    20,115,"flow"
+    20,116,"current_stress"
+    20,117,"ebike_travel_range"
+    20,118,"ebike_battery_level"
+    20,119,"ebike_assist_mode"
+    20,120,"ebike_assist_level_percent"
+    20,123,"air_time_remaining"
+    20,124,"pressure_sac"
+    20,125,"volume_sac"
+    20,126,"rmv"
+    20,127,"ascent_rate"
+    20,129,"po2"
+    20,139,"core_temperature"
+    21,2,"data16"
+    21,3,"data"
+    21,4,"event_group"
+    21,7,"score"
+    21,8,"opponent_score"
+    21,9,"front_gear_num"
+    21,10,"front_gear"
+    21,11,"rear_gear_num"
+    21,12,"rear_gear"
+    21,22,"radar_threat_count"
+    21,23,"radar_threat_avg_approach_speed"
+    21,24,"radar_threat_max_approach_speed"
+    23,1,"device_type"
+    23,3,"serial_number"
+    23,4,"product"
+    23,5,"software_version"
+    23,6,"hardware_version"
+    23,7,"cum_operating_time"
+    23,10,"battery_voltage"
+    23,19,"descriptor"
+    23,20,"ant_transmission_type"
+    23,21,"ant_device_number"
+    23,27,"product_name"
+    23,32,"battery_level"
+    375,1,"battery_voltage"
+    375,3,"battery_identifier"
+    72,2,"product"
+    72,3,"serial_number"
+    128,1,"temperature"
+    128,3,"wind_direction"
+    128,4,"wind_speed"
+    128,5,"precipitation_probability"
+    128,6,"temperature_feels_like"
+    128,7,"relative_humidity"
+    128,8,"location"
+    128,10,"observed_location_lat"
+    128,11,"observed_location_long"
+    128,13,"high_temperature"
+    128,14,"low_temperature"
+    129,0,"report_id"
+    160,0,"timestamp_ms"
+    160,1,"position_lat"
+    160,2,"position_long"
+    160,3,"enhanced_altitude"
+    160,4,"enhanced_speed"
+    160,5,"heading"
+    160,7,"velocity"
+    161,0,"timestamp_ms"
+    161,2,"camera_file_uuid"
+    164,0,"timestamp_ms"
+    164,1,"sample_time_offset"
+    164,2,"gyro_x"
+    164,3,"gyro_y"
+    164,4,"gyro_z"
+    164,5,"calibrated_gyro_x"
+    164,6,"calibrated_gyro_y"
+    164,7,"calibrated_gyro_z"
+    165,0,"timestamp_ms"
+    165,1,"sample_time_offset"
+    165,2,"accel_x"
+    165,3,"accel_y"
+    165,4,"accel_z"
+    165,5,"calibrated_accel_x"
+    165,6,"calibrated_accel_y"
+    165,7,"calibrated_accel_z"
+    165,8,"compressed_calibrated_accel_x"
+    165,9,"compressed_calibrated_accel_y"
+    165,10,"compressed_calibrated_accel_z"
+    208,0,"timestamp_ms"
+    208,1,"sample_time_offset"
+    208,2,"mag_x"
+    208,3,"mag_y"
+    208,4,"mag_z"
+    208,5,"calibrated_mag_x"
+    208,6,"calibrated_mag_y"
+    208,7,"calibrated_mag_z"
+    209,0,"timestamp_ms"
+    209,1,"sample_time_offset"
+    209,2,"baro_pres"
+    167,1,"calibration_factor"
+    167,2,"calibration_divisor"
+    167,3,"level_shift"
+    167,4,"offset_cal"
+    167,5,"orientation_matrix"
+    210,1,"calibration_factor"
+    210,2,"calibration_divisor"
+    210,3,"level_shift"
+    210,4,"offset_cal"
+    169,0,"timestamp_ms"
+    169,1,"frame_number"
+    174,0,"timestamp_ms"
+    174,1,"time_offset"
+    174,2,"pid"
+    174,3,"raw_data"
+    174,4,"pid_data_size"
+    174,5,"system_time"
+    174,7,"start_timestamp_ms"
+    177,0,"timestamp_ms"
+    177,1,"sentence"
+    178,0,"timestamp_ms"
+    178,1,"system_time"
+    178,2,"pitch"
+    178,3,"roll"
+    178,4,"accel_lateral"
+    178,5,"accel_normal"
+    178,6,"turn_rate"
+    178,8,"attitude_stage_complete"
+    178,9,"track"
+    184,0,"url"
+    184,1,"hosting_provider"
+    184,2,"duration"
+    185,0,"message_count"
+    185,1,"text"
+    186,0,"message_count"
+    186,1,"text"
+    187,0,"clip_number"
+    187,2,"start_timestamp_ms"
+    187,4,"end_timestamp_ms"
+    187,6,"clip_start"
+    187,7,"clip_end"
+    225,0,"duration"
+    225,3,"repetitions"
+    225,4,"weight"
+    225,8,"category_subtype"
+    285,0,"distance"
+    285,1,"height"
+    285,2,"rotations"
+    285,3,"hang_time"
+    285,4,"score"
+    285,5,"position_lat"
+    285,6,"position_long"
+    285,7,"speed"
+    285,8,"enhanced_speed"
+    312,1,"total_elapsed_time"
+    312,2,"total_timer_time"
+    312,3,"total_distance"
+    312,4,"avg_speed"
+    312,13,"total_ascent"
+    312,14,"total_descent"
+    312,21,"start_position_lat"
+    312,22,"start_position_long"
+    312,23,"end_position_lat"
+    312,24,"end_position_long"
+    312,25,"max_speed"
+    312,26,"avg_vert_speed"
+    312,28,"total_calories"
+    312,74,"start_elevation"
+    312,110,"total_moving_time"
+    313,3,"num_splits"
+    313,4,"total_timer_time"
+    313,5,"total_distance"
+    313,6,"avg_speed"
+    313,7,"max_speed"
+    313,8,"total_ascent"
+    313,9,"total_descent"
+    313,10,"avg_heart_rate"
+    313,11,"max_heart_rate"
+    313,12,"avg_vert_speed"
+    313,13,"total_calories"
+    313,77,"total_moving_time"
+    317,0,"position_lat"
+    317,1,"position_long"
+    317,3,"climb_number"
+    317,4,"climb_category"
+    317,5,"current_dist"
+    206,0,"developer_data_index"
+    206,1,"field_definition_number"
+    206,3,"field_name"
+    206,4,"array"
+    206,5,"components"
+    206,6,"scale"
+    206,7,"offset"
+    206,8,"units"
+    206,9,"bits"
+    206,10,"accumulate"
+    206,15,"native_field_num"
+    207,0,"developer_id"
+    207,1,"application_id"
+    207,3,"developer_data_index"
+    207,4,"application_version"
+    31,5,"name"
+    32,2,"position_lat"
+    32,3,"position_long"
+    32,4,"distance"
+    32,6,"name"
+    32,8,"favorite"
+    148,0,"name"
+    148,1,"uuid"
+    148,3,"enabled"
+    148,4,"user_profile_primary_key"
+    148,5,"device_id"
+    148,6,"default_race_leader"
+    149,0,"name"
+    149,2,"group_primary_key"
+    149,3,"activity_id"
+    149,4,"segment_time"
+    149,5,"activity_id_string"
+    150,1,"position_lat"
+    150,2,"position_long"
+    150,3,"distance"
+    150,4,"altitude"
+    150,5,"leader_time"
+    150,6,"enhanced_altitude"
+    142,3,"start_position_lat"
+    142,4,"start_position_long"
+    142,5,"end_position_lat"
+    142,6,"end_position_long"
+    142,7,"total_elapsed_time"
+    142,8,"total_timer_time"
+    142,9,"total_distance"
+    142,10,"total_cycles"
+    142,11,"total_calories"
+    142,12,"total_fat_calories"
+    142,13,"avg_speed"
+    142,14,"max_speed"
+    142,15,"avg_heart_rate"
+    142,16,"max_heart_rate"
+    142,17,"avg_cadence"
+    142,18,"max_cadence"
+    142,19,"avg_power"
+    142,20,"max_power"
+    142,21,"total_ascent"
+    142,22,"total_descent"
+    142,24,"event_group"
+    142,25,"nec_lat"
+    142,26,"nec_long"
+    142,27,"swc_lat"
+    142,28,"swc_long"
+    142,29,"name"
+    142,30,"normalized_power"
+    142,33,"total_work"
+    142,34,"avg_altitude"
+    142,35,"max_altitude"
+    142,36,"gps_accuracy"
+    142,37,"avg_grade"
+    142,38,"avg_pos_grade"
+    142,39,"avg_neg_grade"
+    142,40,"max_pos_grade"
+    142,41,"max_neg_grade"
+    142,42,"avg_temperature"
+    142,43,"max_temperature"
+    142,44,"total_moving_time"
+    142,45,"avg_pos_vertical_speed"
+    142,46,"avg_neg_vertical_speed"
+    142,47,"max_pos_vertical_speed"
+    142,48,"max_neg_vertical_speed"
+    142,49,"time_in_hr_zone"
+    142,50,"time_in_speed_zone"
+    142,51,"time_in_cadence_zone"
+    142,52,"time_in_power_zone"
+    142,53,"repetition_num"
+    142,54,"min_altitude"
+    142,55,"min_heart_rate"
+    142,56,"active_time"
+    142,59,"avg_left_torque_effectiveness"
+    142,60,"avg_right_torque_effectiveness"
+    142,61,"avg_left_pedal_smoothness"
+    142,62,"avg_right_pedal_smoothness"
+    142,63,"avg_combined_pedal_smoothness"
+    142,65,"uuid"
+    142,66,"avg_fractional_cadence"
+    142,67,"max_fractional_cadence"
+    142,68,"total_fractional_cycles"
+    142,69,"front_gear_shift_count"
+    142,70,"rear_gear_shift_count"
+    142,71,"time_standing"
+    142,72,"stand_count"
+    142,73,"avg_left_pco"
+    142,74,"avg_right_pco"
+    142,75,"avg_left_power_phase"
+    142,76,"avg_left_power_phase_peak"
+    142,77,"avg_right_power_phase"
+    142,78,"avg_right_power_phase_peak"
+    142,79,"avg_power_position"
+    142,80,"max_power_position"
+    142,81,"avg_cadence_position"
+    142,82,"max_cadence_position"
+    142,84,"total_grit"
+    142,85,"total_flow"
+    142,86,"avg_grit"
+    142,87,"avg_flow"
+    142,89,"total_fractional_ascent"
+    142,90,"total_fractional_descent"
+    142,91,"enhanced_avg_altitude"
+    142,92,"enhanced_max_altitude"
+    142,93,"enhanced_min_altitude"
+    151,1,"file_uuid"
+    151,3,"enabled"
+    151,4,"user_profile_primary_key"
+    151,8,"leader_group_primary_key"
+    151,9,"leader_activity_id"
+    151,10,"leader_activity_id_string"
+    151,11,"default_race_leader"
+    26,6,"num_valid_steps"
+    26,8,"wkt_name"
+    26,14,"pool_length"
+    158,2,"num_valid_steps"
+    158,3,"first_step_index"
+    158,4,"pool_length"
+    27,0,"wkt_step_name"
+    27,2,"duration_value"
+    27,4,"target_value"
+    27,5,"custom_target_value_low"
+    27,6,"custom_target_value_high"
+    27,8,"notes"
+    27,11,"exercise_name"
+    27,12,"exercise_weight"
+    27,20,"secondary_target_value"
+    27,21,"secondary_custom_target_value_low"
+    27,22,"secondary_custom_target_value_high"
+    264,1,"exercise_name"
+    264,2,"wkt_step_name"
+    28,1,"product"
+    28,2,"serial_number"
+    28,4,"completed"
+    33,0,"timer_time"
+    33,1,"distance"
+    33,2,"calories"
+    33,4,"elapsed_time"
+    33,5,"sessions"
+    33,6,"active_time"
+    33,9,"sport_index"
+    30,1,"percent_fat"
+    30,2,"percent_hydration"
+    30,3,"visceral_fat_mass"
+    30,4,"bone_mass"
+    30,5,"muscle_mass"
+    30,7,"basal_met"
+    30,8,"physique_rating"
+    30,9,"active_met"
+    30,10,"metabolic_age"
+    30,11,"visceral_fat_rating"
+    30,13,"bmi"
+    51,0,"systolic_pressure"
+    51,1,"diastolic_pressure"
+    51,2,"mean_arterial_pressure"
+    51,3,"map_3_sample_mean"
+    51,4,"map_morning_values"
+    51,5,"map_evening_values"
+    51,6,"heart_rate"
+    103,3,"cycles_to_distance"
+    103,4,"cycles_to_calories"
+    103,5,"resting_metabolic_rate"
+    55,1,"calories"
+    55,2,"distance"
+    55,3,"cycles"
+    55,4,"active_time"
+    55,8,"distance_16"
+    55,9,"cycles_16"
+    55,10,"active_time_16"
+    55,12,"temperature"
+    55,14,"temperature_min"
+    55,15,"temperature_max"
+    55,16,"activity_time"
+    55,19,"active_calories"
+    55,24,"current_activity_type_intensity"
+    55,25,"timestamp_min_8"
+    55,26,"timestamp_16"
+    55,27,"heart_rate"
+    55,28,"intensity"
+    55,29,"duration_min"
+    55,30,"duration"
+    55,31,"ascent"
+    55,32,"descent"
+    55,33,"moderate_activity_minutes"
+    55,34,"vigorous_activity_minutes"
+    211,0,"resting_heart_rate"
+    211,1,"current_day_resting_heart_rate"
+    269,0,"reading_spo2"
+    269,1,"reading_confidence"
+    132,0,"fractional_timestamp"
+    132,1,"time256"
+    132,6,"filtered_bpm"
+    132,9,"event_timestamp"
+    132,10,"event_timestamp_12"
+    227,0,"stress_level_value"
+    229,2,"vo2_max"
+    229,9,"calibrated_data"
+    314,0,"processing_interval"
+    314,1,"level"
+    314,2,"charged"
+    314,3,"uncharged"
+    315,0,"event_id"
+    302,0,"timestamp_ms"
+    302,1,"sampling_interval"
+    302,2,"accel_x"
+    302,3,"accel_y"
+    302,4,"accel_z"
+    302,5,"timestamp_32k"
+    376,0,"timestamp_ms"
+    376,1,"sampling_interval"
+    376,2,"gyro_x"
+    376,3,"gyro_y"
+    376,4,"gyro_z"
+    376,5,"timestamp_32k"
+    304,0,"processing_interval"
+    304,1,"steps"
+    305,0,"processing_interval"
+    305,1,"reading_spo2"
+    305,2,"confidence"
+    306,0,"processing_interval"
+    306,1,"stress_level"
+    307,0,"processing_interval"
+    307,1,"respiration_rate"
+    308,0,"processing_interval"
+    308,1,"status"
+    308,2,"heart_rate"
+    389,0,"data"
+    389,1,"data_size"
+    409,0,"processing_interval"
+    409,1,"value"
+    145,250,"part_index"
+    145,0,"memo"
+    145,3,"field_num"
+    145,4,"data"
+    82,0,"channel_number"
+    82,1,"device_type"
+    82,2,"device_number"
+    82,3,"transmission_type"
+    80,0,"fractional_timestamp"
+    80,1,"mesg_id"
+    80,2,"mesg_data"
+    80,3,"channel_number"
+    80,4,"data"
+    81,0,"fractional_timestamp"
+    81,1,"mesg_id"
+    81,2,"mesg_data"
+    81,3,"channel_number"
+    81,4,"data"
+    200,0,"screen_index"
+    200,1,"field_count"
+    200,3,"screen_enabled"
+    201,0,"screen_index"
+    201,1,"concept_field"
+    201,2,"field_id"
+    201,3,"concept_count"
+    201,5,"title"
+    202,0,"screen_index"
+    202,1,"concept_field"
+    202,2,"field_id"
+    202,3,"concept_index"
+    202,4,"data_page"
+    202,5,"concept_key"
+    202,6,"scaling"
+    202,11,"is_signed"
+    268,2,"avg_depth"
+    268,3,"max_depth"
+    268,4,"surface_interval"
+    268,5,"start_cns"
+    268,6,"end_cns"
+    268,7,"start_n2"
+    268,8,"end_n2"
+    268,9,"o2_toxicity"
+    268,10,"dive_number"
+    268,11,"bottom_time"
+    268,12,"avg_pressure_sac"
+    268,13,"avg_volume_sac"
+    268,14,"avg_rmv"
+    268,15,"descent_time"
+    268,16,"ascent_time"
+    268,17,"avg_ascent_rate"
+    268,22,"avg_descent_rate"
+    268,23,"max_ascent_rate"
+    268,24,"max_descent_rate"
+    268,25,"hang_time"
+    289,0,"time"
+    289,1,"energy_total"
+    289,2,"zero_cross_cnt"
+    289,3,"instance"
+    289,4,"time_above_threshold"
+    78,0,"time"
+    290,0,"timestamp_ms"
+    290,1,"time"
+    370,0,"weekly_average"
+    370,1,"last_night_average"
+    370,2,"last_night_5_min_high"
+    370,3,"baseline_low_upper"
+    370,4,"baseline_balanced_lower"
+    370,5,"baseline_balanced_upper"
+    371,0,"value"
+    372,0,"timestamp_ms"
+    372,1,"data"
+    372,2,"time"
+    372,3,"quality"
+    372,4,"gap"
+    297,0,"respiration_rate"
+    387,0,"min_speed"
+    387,1,"max_speed"
+    387,2,"avg_speed"
+    387,3,"shot_count"
+    387,5,"grain_weight"
+    388,0,"shot_speed"
+    388,1,"shot_num"
+    319,1,"pressure"
+    323,1,"start_pressure"
+    323,2,"end_pressure"
+    323,3,"volume_used"
+    346,0,"combined_awake_score"
+    346,1,"awake_time_score"
+    346,2,"awakenings_count_score"
+    346,3,"deep_sleep_score"
+    346,4,"sleep_duration_score"
+    346,5,"light_sleep_score"
+    346,6,"overall_sleep_score"
+    346,7,"sleep_quality_score"
+    346,8,"sleep_recovery_score"
+    346,9,"rem_sleep_score"
+    346,10,"sleep_restlessness_score"
+    346,11,"awakenings_count"
+    346,14,"interruptions_score"
+    346,15,"average_stress_during_sleep"
+
     }
     crate::expand_fields! {
     0,0,"type",File
     0,1,"manufacturer",Manufacturer
-    0,2,"product",Value
-    0,3,"serial_number",Value
     0,4,"time_created",DateTime
-    0,5,"number",Value
-    0,8,"product_name",Value
-    49,0,"software_version",Value
-    49,1,"hardware_version",Value
     162,253,"timestamp",DateTime
-    162,0,"fractional_timestamp",Value
     162,1,"system_timestamp",DateTime
-    162,2,"fractional_system_timestamp",Value
     162,3,"local_timestamp",LocalDateTime
-    162,4,"timestamp_ms",Value
-    162,5,"system_timestamp_ms",Value
     35,254,"message_index",MessageIndex
-    35,3,"version",Value
-    35,5,"part_number",Value
     106,0,"manufacturer",Manufacturer
-    106,1,"product",Value
-    1,0,"languages",Value
     1,1,"sports",SportBits0
     1,21,"workouts_supported",WorkoutCapabilities
     1,23,"connectivity_supported",ConnectivityCapabilities
     37,254,"message_index",MessageIndex
     37,0,"type",File
     37,1,"flags",FileFlags
-    37,2,"directory",Value
-    37,3,"max_count",Value
-    37,4,"max_size",Value
     38,254,"message_index",MessageIndex
     38,0,"file",File
     38,1,"mesg_num",MesgNum
     38,2,"count_type",MesgCount
-    38,3,"count",Value
     39,254,"message_index",MessageIndex
     39,0,"file",File
     39,1,"mesg_num",MesgNum
-    39,2,"field_num",Value
-    39,3,"count",Value
-    2,0,"active_time_zone",Value
-    2,1,"utc_offset",Value
-    2,2,"time_offset",Value
     2,4,"time_mode",TimeMode
-    2,5,"time_zone_offset",Value
     2,12,"backlight_mode",BacklightMode
-    2,36,"activity_tracker_enabled",Bool
     2,39,"clock_time",DateTime
-    2,40,"pages_enabled",Value
-    2,46,"move_alert_enabled",Bool
     2,47,"date_mode",DateMode
     2,55,"display_orientation",DisplayOrientation
     2,56,"mounting_side",Side
-    2,57,"default_page",Value
-    2,58,"autosync_min_steps",Value
-    2,59,"autosync_min_time",Value
-    2,80,"lactate_threshold_autodetect_enabled",Bool
-    2,86,"ble_auto_upload_enabled",Bool
     2,89,"auto_sync_frequency",AutoSyncFrequency
     2,90,"auto_activity_detect",AutoActivityDetect
-    2,94,"number_of_screens",Value
     2,95,"smart_notification_display_orientation",DisplayOrientation
     2,134,"tap_interface",Switch
     2,174,"tap_sensitivity",TapSensitivity
     3,254,"message_index",MessageIndex
-    3,0,"friendly_name",Value
     3,1,"gender",Gender
-    3,2,"age",Value
-    3,3,"height",Value
-    3,4,"weight",Value
     3,5,"language",Language
     3,6,"elev_setting",DisplayMeasure
     3,7,"weight_setting",DisplayMeasure
-    3,8,"resting_heart_rate",Value
-    3,9,"default_max_running_heart_rate",Value
-    3,10,"default_max_biking_heart_rate",Value
-    3,11,"default_max_heart_rate",Value
     3,12,"hr_setting",DisplayHeart
     3,13,"speed_setting",DisplayMeasure
     3,14,"dist_setting",DisplayMeasure
@@ -140,181 +1224,55 @@ impl Field {
     3,18,"position_setting",DisplayPosition
     3,21,"temperature_setting",DisplayMeasure
     3,22,"local_id",UserLocalId
-    3,23,"global_id",Value
     3,28,"wake_time",LocaltimeIntoDay
     3,29,"sleep_time",LocaltimeIntoDay
     3,30,"height_setting",DisplayMeasure
-    3,31,"user_running_step_length",Value
-    3,32,"user_walking_step_length",Value
     3,47,"depth_setting",DisplayMeasure
-    3,49,"dive_count",Value
     4,254,"message_index",MessageIndex
-    4,0,"enabled",Bool
-    4,1,"hrm_ant_id",Value
-    4,2,"log_hrv",Bool
-    4,3,"hrm_ant_id_trans_type",Value
     5,254,"message_index",MessageIndex
-    5,0,"enabled",Bool
-    5,1,"sdm_ant_id",Value
-    5,2,"sdm_cal_factor",Value
-    5,3,"odometer",Value
-    5,4,"speed_source",Bool
-    5,5,"sdm_ant_id_trans_type",Value
-    5,7,"odometer_rollover",Value
     6,254,"message_index",MessageIndex
-    6,0,"name",Value
     6,1,"sport",Sport
     6,2,"sub_sport",SubSport
-    6,3,"odometer",Value
-    6,4,"bike_spd_ant_id",Value
-    6,5,"bike_cad_ant_id",Value
-    6,6,"bike_spdcad_ant_id",Value
-    6,7,"bike_power_ant_id",Value
-    6,8,"custom_wheelsize",Value
-    6,9,"auto_wheelsize",Value
-    6,10,"bike_weight",Value
-    6,11,"power_cal_factor",Value
-    6,12,"auto_wheel_cal",Bool
-    6,13,"auto_power_zero",Bool
-    6,14,"id",Value
-    6,15,"spd_enabled",Bool
-    6,16,"cad_enabled",Bool
-    6,17,"spdcad_enabled",Bool
-    6,18,"power_enabled",Bool
-    6,19,"crank_length",Value
-    6,20,"enabled",Bool
-    6,21,"bike_spd_ant_id_trans_type",Value
-    6,22,"bike_cad_ant_id_trans_type",Value
-    6,23,"bike_spdcad_ant_id_trans_type",Value
-    6,24,"bike_power_ant_id_trans_type",Value
-    6,37,"odometer_rollover",Value
-    6,38,"front_gear_num",Value
-    6,39,"front_gear",Value
-    6,40,"rear_gear_num",Value
-    6,41,"rear_gear",Value
-    6,44,"shimano_di2_enabled",Bool
-    127,0,"bluetooth_enabled",Bool
-    127,1,"bluetooth_le_enabled",Bool
-    127,2,"ant_enabled",Bool
-    127,3,"name",Value
-    127,4,"live_tracking_enabled",Bool
-    127,5,"weather_conditions_enabled",Bool
-    127,6,"weather_alerts_enabled",Bool
-    127,7,"auto_activity_upload_enabled",Bool
-    127,8,"course_download_enabled",Bool
-    127,9,"workout_download_enabled",Bool
-    127,10,"gps_ephemeris_download_enabled",Bool
-    127,11,"incident_detection_enabled",Bool
-    127,12,"grouptrack_enabled",Bool
     159,254,"message_index",MessageIndex
     159,0,"mode",WatchfaceMode
-    159,1,"layout",Value
     188,253,"timestamp",DateTime
     188,0,"enabled",Switch
     216,253,"timestamp",DateTime
     216,0,"reference_mesg",MesgNum
     216,1,"reference_index",MessageIndex
-    216,2,"time_in_hr_zone",Value
-    216,3,"time_in_speed_zone",Value
-    216,4,"time_in_cadence_zone",Value
-    216,5,"time_in_power_zone",Value
-    216,6,"hr_zone_high_boundary",Value
-    216,7,"speed_zone_high_boundary",Value
-    216,8,"cadence_zone_high_bondary",Value
-    216,9,"power_zone_high_boundary",Value
     216,10,"hr_calc_type",HrZoneCalc
-    216,11,"max_heart_rate",Value
-    216,12,"resting_heart_rate",Value
-    216,13,"threshold_heart_rate",Value
     216,14,"pwr_calc_type",PwrZoneCalc
-    216,15,"functional_threshold_power",Value
-    7,1,"max_heart_rate",Value
-    7,2,"threshold_heart_rate",Value
-    7,3,"functional_threshold_power",Value
     7,5,"hr_calc_type",HrZoneCalc
     7,7,"pwr_calc_type",PwrZoneCalc
     12,0,"sport",Sport
     12,1,"sub_sport",SubSport
-    12,3,"name",Value
     8,254,"message_index",MessageIndex
-    8,1,"high_bpm",Value
-    8,2,"name",Value
     53,254,"message_index",MessageIndex
-    53,0,"high_value",Value
-    53,1,"name",Value
     131,254,"message_index",MessageIndex
-    131,0,"high_value",Value
-    131,1,"name",Value
     9,254,"message_index",MessageIndex
-    9,1,"high_value",Value
-    9,2,"name",Value
     10,254,"message_index",MessageIndex
-    10,1,"high_bpm",Value
-    10,2,"calories",Value
-    10,3,"fat_calories",Value
     258,253,"timestamp",DateTime
     258,254,"message_index",MessageIndex
-    258,0,"name",Value
     258,1,"model",TissueModelType
-    258,2,"gf_low",Value
-    258,3,"gf_high",Value
     258,4,"water_type",WaterType
-    258,5,"water_density",Value
-    258,6,"po2_warn",Value
-    258,7,"po2_critical",Value
-    258,8,"po2_deco",Value
-    258,9,"safety_stop_enabled",Bool
-    258,10,"bottom_depth",Value
-    258,11,"bottom_time",Value
-    258,12,"apnea_countdown_enabled",Bool
-    258,13,"apnea_countdown_time",Value
     258,14,"backlight_mode",DiveBacklightMode
-    258,15,"backlight_brightness",Value
     258,16,"backlight_timeout",BacklightTimeout
-    258,17,"repeat_dive_interval",Value
-    258,18,"safety_stop_time",Value
     258,19,"heart_rate_source_type",SourceType
-    258,20,"heart_rate_source",Value
     258,21,"travel_gas",MessageIndex
     258,22,"ccr_low_setpoint_switch_mode",CcrSetpointSwitchMode
-    258,23,"ccr_low_setpoint",Value
-    258,24,"ccr_low_setpoint_depth",Value
     258,25,"ccr_high_setpoint_switch_mode",CcrSetpointSwitchMode
-    258,26,"ccr_high_setpoint",Value
-    258,27,"ccr_high_setpoint_depth",Value
     258,29,"gas_consumption_display",GasConsumptionRateType
-    258,30,"up_key_enabled",Bool
     258,35,"dive_sounds",Tone
-    258,36,"last_stop_multiple",Value
+    258,37,"no_fly_time_mode",NoFlyTimeMode
     262,254,"message_index",MessageIndex
-    262,0,"depth",Value
-    262,1,"time",Value
-    262,2,"enabled",Bool
     262,3,"alarm_type",DiveAlarmType
     262,4,"sound",Tone
     262,5,"dive_types",SubSport
-    262,6,"id",Value
-    262,7,"popup_enabled",Bool
-    262,8,"trigger_on_descent",Bool
-    262,9,"trigger_on_ascent",Bool
-    262,10,"repeating",Bool
-    262,11,"speed",Value
     393,254,"message_index",MessageIndex
-    393,0,"depth",Value
-    393,1,"time",Value
-    393,2,"enabled",Bool
     393,3,"alarm_type",DiveAlarmType
     393,4,"sound",Tone
     393,5,"dive_types",SubSport
-    393,6,"id",Value
-    393,7,"popup_enabled",Bool
-    393,8,"trigger_on_descent",Bool
-    393,9,"trigger_on_ascent",Bool
-    393,10,"repeating",Bool
-    393,11,"speed",Value
     259,254,"message_index",MessageIndex
-    259,0,"helium_content",Value
-    259,1,"oxygen_content",Value
     259,2,"status",DiveGasStatus
     259,3,"mode",DiveGasMode
     15,254,"message_index",MessageIndex
@@ -323,1094 +1281,242 @@ impl Field {
     15,2,"start_date",DateTime
     15,3,"end_date",DateTime
     15,4,"type",Goal
-    15,5,"value",Value
-    15,6,"repeat",Bool
-    15,7,"target_value",Value
     15,8,"recurrence",GoalRecurrence
-    15,9,"recurrence_value",Value
-    15,10,"enabled",Bool
     15,11,"source",GoalSource
     34,253,"timestamp",DateTime
-    34,0,"total_timer_time",Value
-    34,1,"num_sessions",Value
     34,2,"type",Activity
     34,3,"event",Event
     34,4,"event_type",EventType
     34,5,"local_timestamp",LocalDateTime
-    34,6,"event_group",Value
     18,254,"message_index",MessageIndex
     18,253,"timestamp",DateTime
     18,0,"event",Event
     18,1,"event_type",EventType
     18,2,"start_time",DateTime
-    18,3,"start_position_lat",Value
-    18,4,"start_position_long",Value
     18,5,"sport",Sport
     18,6,"sub_sport",SubSport
-    18,7,"total_elapsed_time",Value
-    18,8,"total_timer_time",Value
-    18,9,"total_distance",Value
-    18,10,"total_cycles",Value
-    18,11,"total_calories",Value
-    18,13,"total_fat_calories",Value
-    18,14,"avg_speed",Value
-    18,15,"max_speed",Value
-    18,16,"avg_heart_rate",Value
-    18,17,"max_heart_rate",Value
-    18,18,"avg_cadence",Value
-    18,19,"max_cadence",Value
-    18,20,"avg_power",Value
-    18,21,"max_power",Value
-    18,22,"total_ascent",Value
-    18,23,"total_descent",Value
-    18,24,"total_training_effect",Value
-    18,25,"first_lap_index",Value
-    18,26,"num_laps",Value
-    18,27,"event_group",Value
     18,28,"trigger",SessionTrigger
-    18,29,"nec_lat",Value
-    18,30,"nec_long",Value
-    18,31,"swc_lat",Value
-    18,32,"swc_long",Value
-    18,33,"num_lengths",Value
-    18,34,"normalized_power",Value
-    18,35,"training_stress_score",Value
-    18,36,"intensity_factor",Value
     18,37,"left_right_balance",LeftRightBalanceOne00
-    18,38,"end_position_lat",Value
-    18,39,"end_position_long",Value
-    18,41,"avg_stroke_count",Value
-    18,42,"avg_stroke_distance",Value
     18,43,"swim_stroke",SwimStroke
-    18,44,"pool_length",Value
-    18,45,"threshold_power",Value
     18,46,"pool_length_unit",DisplayMeasure
-    18,47,"num_active_lengths",Value
-    18,48,"total_work",Value
-    18,49,"avg_altitude",Value
-    18,50,"max_altitude",Value
-    18,51,"gps_accuracy",Value
-    18,52,"avg_grade",Value
-    18,53,"avg_pos_grade",Value
-    18,54,"avg_neg_grade",Value
-    18,55,"max_pos_grade",Value
-    18,56,"max_neg_grade",Value
-    18,57,"avg_temperature",Value
-    18,58,"max_temperature",Value
-    18,59,"total_moving_time",Value
-    18,60,"avg_pos_vertical_speed",Value
-    18,61,"avg_neg_vertical_speed",Value
-    18,62,"max_pos_vertical_speed",Value
-    18,63,"max_neg_vertical_speed",Value
-    18,64,"min_heart_rate",Value
-    18,65,"time_in_hr_zone",Value
-    18,66,"time_in_speed_zone",Value
-    18,67,"time_in_cadence_zone",Value
-    18,68,"time_in_power_zone",Value
-    18,69,"avg_lap_time",Value
-    18,70,"best_lap_index",Value
-    18,71,"min_altitude",Value
-    18,82,"player_score",Value
-    18,83,"opponent_score",Value
-    18,84,"opponent_name",Value
-    18,85,"stroke_count",Value
-    18,86,"zone_count",Value
-    18,87,"max_ball_speed",Value
-    18,88,"avg_ball_speed",Value
-    18,89,"avg_vertical_oscillation",Value
-    18,90,"avg_stance_time_percent",Value
-    18,91,"avg_stance_time",Value
-    18,92,"avg_fractional_cadence",Value
-    18,93,"max_fractional_cadence",Value
-    18,94,"total_fractional_cycles",Value
-    18,95,"avg_total_hemoglobin_conc",Value
-    18,96,"min_total_hemoglobin_conc",Value
-    18,97,"max_total_hemoglobin_conc",Value
-    18,98,"avg_saturated_hemoglobin_percent",Value
-    18,99,"min_saturated_hemoglobin_percent",Value
-    18,100,"max_saturated_hemoglobin_percent",Value
-    18,101,"avg_left_torque_effectiveness",Value
-    18,102,"avg_right_torque_effectiveness",Value
-    18,103,"avg_left_pedal_smoothness",Value
-    18,104,"avg_right_pedal_smoothness",Value
-    18,105,"avg_combined_pedal_smoothness",Value
-    18,110,"sport_profile_name",Value
-    18,111,"sport_index",Value
-    18,112,"time_standing",Value
-    18,113,"stand_count",Value
-    18,114,"avg_left_pco",Value
-    18,115,"avg_right_pco",Value
-    18,116,"avg_left_power_phase",Value
-    18,117,"avg_left_power_phase_peak",Value
-    18,118,"avg_right_power_phase",Value
-    18,119,"avg_right_power_phase_peak",Value
-    18,120,"avg_power_position",Value
-    18,121,"max_power_position",Value
-    18,122,"avg_cadence_position",Value
-    18,123,"max_cadence_position",Value
-    18,124,"enhanced_avg_speed",Value
-    18,125,"enhanced_max_speed",Value
-    18,126,"enhanced_avg_altitude",Value
-    18,127,"enhanced_min_altitude",Value
-    18,128,"enhanced_max_altitude",Value
-    18,129,"avg_lev_motor_power",Value
-    18,130,"max_lev_motor_power",Value
-    18,131,"lev_battery_consumption",Value
-    18,132,"avg_vertical_ratio",Value
-    18,133,"avg_stance_time_balance",Value
-    18,134,"avg_step_length",Value
-    18,137,"total_anaerobic_training_effect",Value
-    18,139,"avg_vam",Value
-    18,140,"avg_depth",Value
-    18,141,"max_depth",Value
-    18,142,"surface_interval",Value
-    18,143,"start_cns",Value
-    18,144,"end_cns",Value
-    18,145,"start_n2",Value
-    18,146,"end_n2",Value
-    18,147,"avg_respiration_rate",Value
-    18,148,"max_respiration_rate",Value
-    18,149,"min_respiration_rate",Value
-    18,150,"min_temperature",Value
-    18,155,"o2_toxicity",Value
-    18,156,"dive_number",Value
-    18,168,"training_load_peak",Value
-    18,169,"enhanced_avg_respiration_rate",Value
-    18,170,"enhanced_max_respiration_rate",Value
-    18,180,"enhanced_min_respiration_rate",Value
-    18,181,"total_grit",Value
-    18,182,"total_flow",Value
-    18,183,"jump_count",Value
-    18,186,"avg_grit",Value
-    18,187,"avg_flow",Value
-    18,194,"avg_spo2",Value
-    18,195,"avg_stress",Value
-    18,197,"sdrr_hrv",Value
-    18,198,"rmssd_hrv",Value
-    18,199,"total_fractional_ascent",Value
-    18,200,"total_fractional_descent",Value
-    18,208,"avg_core_temperature",Value
-    18,209,"min_core_temperature",Value
-    18,210,"max_core_temperature",Value
     19,254,"message_index",MessageIndex
     19,253,"timestamp",DateTime
     19,0,"event",Event
     19,1,"event_type",EventType
     19,2,"start_time",DateTime
-    19,3,"start_position_lat",Value
-    19,4,"start_position_long",Value
-    19,5,"end_position_lat",Value
-    19,6,"end_position_long",Value
-    19,7,"total_elapsed_time",Value
-    19,8,"total_timer_time",Value
-    19,9,"total_distance",Value
-    19,10,"total_cycles",Value
-    19,11,"total_calories",Value
-    19,12,"total_fat_calories",Value
-    19,13,"avg_speed",Value
-    19,14,"max_speed",Value
-    19,15,"avg_heart_rate",Value
-    19,16,"max_heart_rate",Value
-    19,17,"avg_cadence",Value
-    19,18,"max_cadence",Value
-    19,19,"avg_power",Value
-    19,20,"max_power",Value
-    19,21,"total_ascent",Value
-    19,22,"total_descent",Value
     19,23,"intensity",Intensity
     19,24,"lap_trigger",LapTrigger
     19,25,"sport",Sport
-    19,26,"event_group",Value
-    19,32,"num_lengths",Value
-    19,33,"normalized_power",Value
     19,34,"left_right_balance",LeftRightBalanceOne00
-    19,35,"first_length_index",Value
-    19,37,"avg_stroke_distance",Value
     19,38,"swim_stroke",SwimStroke
     19,39,"sub_sport",SubSport
-    19,40,"num_active_lengths",Value
-    19,41,"total_work",Value
-    19,42,"avg_altitude",Value
-    19,43,"max_altitude",Value
-    19,44,"gps_accuracy",Value
-    19,45,"avg_grade",Value
-    19,46,"avg_pos_grade",Value
-    19,47,"avg_neg_grade",Value
-    19,48,"max_pos_grade",Value
-    19,49,"max_neg_grade",Value
-    19,50,"avg_temperature",Value
-    19,51,"max_temperature",Value
-    19,52,"total_moving_time",Value
-    19,53,"avg_pos_vertical_speed",Value
-    19,54,"avg_neg_vertical_speed",Value
-    19,55,"max_pos_vertical_speed",Value
-    19,56,"max_neg_vertical_speed",Value
-    19,57,"time_in_hr_zone",Value
-    19,58,"time_in_speed_zone",Value
-    19,59,"time_in_cadence_zone",Value
-    19,60,"time_in_power_zone",Value
-    19,61,"repetition_num",Value
-    19,62,"min_altitude",Value
-    19,63,"min_heart_rate",Value
     19,71,"wkt_step_index",MessageIndex
-    19,74,"opponent_score",Value
-    19,75,"stroke_count",Value
-    19,76,"zone_count",Value
-    19,77,"avg_vertical_oscillation",Value
-    19,78,"avg_stance_time_percent",Value
-    19,79,"avg_stance_time",Value
-    19,80,"avg_fractional_cadence",Value
-    19,81,"max_fractional_cadence",Value
-    19,82,"total_fractional_cycles",Value
-    19,83,"player_score",Value
-    19,84,"avg_total_hemoglobin_conc",Value
-    19,85,"min_total_hemoglobin_conc",Value
-    19,86,"max_total_hemoglobin_conc",Value
-    19,87,"avg_saturated_hemoglobin_percent",Value
-    19,88,"min_saturated_hemoglobin_percent",Value
-    19,89,"max_saturated_hemoglobin_percent",Value
-    19,91,"avg_left_torque_effectiveness",Value
-    19,92,"avg_right_torque_effectiveness",Value
-    19,93,"avg_left_pedal_smoothness",Value
-    19,94,"avg_right_pedal_smoothness",Value
-    19,95,"avg_combined_pedal_smoothness",Value
-    19,98,"time_standing",Value
-    19,99,"stand_count",Value
-    19,100,"avg_left_pco",Value
-    19,101,"avg_right_pco",Value
-    19,102,"avg_left_power_phase",Value
-    19,103,"avg_left_power_phase_peak",Value
-    19,104,"avg_right_power_phase",Value
-    19,105,"avg_right_power_phase_peak",Value
-    19,106,"avg_power_position",Value
-    19,107,"max_power_position",Value
-    19,108,"avg_cadence_position",Value
-    19,109,"max_cadence_position",Value
-    19,110,"enhanced_avg_speed",Value
-    19,111,"enhanced_max_speed",Value
-    19,112,"enhanced_avg_altitude",Value
-    19,113,"enhanced_min_altitude",Value
-    19,114,"enhanced_max_altitude",Value
-    19,115,"avg_lev_motor_power",Value
-    19,116,"max_lev_motor_power",Value
-    19,117,"lev_battery_consumption",Value
-    19,118,"avg_vertical_ratio",Value
-    19,119,"avg_stance_time_balance",Value
-    19,120,"avg_step_length",Value
-    19,121,"avg_vam",Value
-    19,122,"avg_depth",Value
-    19,123,"max_depth",Value
-    19,124,"min_temperature",Value
-    19,136,"enhanced_avg_respiration_rate",Value
-    19,137,"enhanced_max_respiration_rate",Value
-    19,147,"avg_respiration_rate",Value
-    19,148,"max_respiration_rate",Value
-    19,149,"total_grit",Value
-    19,150,"total_flow",Value
-    19,151,"jump_count",Value
-    19,153,"avg_grit",Value
-    19,154,"avg_flow",Value
-    19,156,"total_fractional_ascent",Value
-    19,157,"total_fractional_descent",Value
-    19,158,"avg_core_temperature",Value
-    19,159,"min_core_temperature",Value
-    19,160,"max_core_temperature",Value
     101,254,"message_index",MessageIndex
     101,253,"timestamp",DateTime
     101,0,"event",Event
     101,1,"event_type",EventType
     101,2,"start_time",DateTime
-    101,3,"total_elapsed_time",Value
-    101,4,"total_timer_time",Value
-    101,5,"total_strokes",Value
-    101,6,"avg_speed",Value
     101,7,"swim_stroke",SwimStroke
-    101,9,"avg_swimming_cadence",Value
-    101,10,"event_group",Value
-    101,11,"total_calories",Value
     101,12,"length_type",LengthType
-    101,18,"player_score",Value
-    101,19,"opponent_score",Value
-    101,20,"stroke_count",Value
-    101,21,"zone_count",Value
-    101,22,"enhanced_avg_respiration_rate",Value
-    101,23,"enhanced_max_respiration_rate",Value
-    101,24,"avg_respiration_rate",Value
-    101,25,"max_respiration_rate",Value
     20,253,"timestamp",DateTime
-    20,0,"position_lat",Value
-    20,1,"position_long",Value
-    20,2,"altitude",Value
-    20,3,"heart_rate",Value
-    20,4,"cadence",Value
-    20,5,"distance",Value
-    20,6,"speed",Value
-    20,7,"power",Value
-    20,8,"compressed_speed_distance",Value
-    20,9,"grade",Value
-    20,10,"resistance",Value
-    20,11,"time_from_course",Value
-    20,12,"cycle_length",Value
-    20,13,"temperature",Value
-    20,17,"speed_1s",Value
-    20,18,"cycles",Value
-    20,19,"total_cycles",Value
-    20,28,"compressed_accumulated_power",Value
-    20,29,"accumulated_power",Value
     20,30,"left_right_balance",LeftRightBalance
-    20,31,"gps_accuracy",Value
-    20,32,"vertical_speed",Value
-    20,33,"calories",Value
-    20,39,"vertical_oscillation",Value
-    20,40,"stance_time_percent",Value
-    20,41,"stance_time",Value
     20,42,"activity_type",ActivityType
-    20,43,"left_torque_effectiveness",Value
-    20,44,"right_torque_effectiveness",Value
-    20,45,"left_pedal_smoothness",Value
-    20,46,"right_pedal_smoothness",Value
-    20,47,"combined_pedal_smoothness",Value
-    20,48,"time128",Value
     20,49,"stroke_type",StrokeType
-    20,50,"zone",Value
-    20,51,"ball_speed",Value
-    20,52,"cadence256",Value
-    20,53,"fractional_cadence",Value
-    20,54,"total_hemoglobin_conc",Value
-    20,55,"total_hemoglobin_conc_min",Value
-    20,56,"total_hemoglobin_conc_max",Value
-    20,57,"saturated_hemoglobin_percent",Value
-    20,58,"saturated_hemoglobin_percent_min",Value
-    20,59,"saturated_hemoglobin_percent_max",Value
     20,62,"device_index",DeviceIndex
-    20,67,"left_pco",Value
-    20,68,"right_pco",Value
-    20,69,"left_power_phase",Value
-    20,70,"left_power_phase_peak",Value
-    20,71,"right_power_phase",Value
-    20,72,"right_power_phase_peak",Value
-    20,73,"enhanced_speed",Value
-    20,78,"enhanced_altitude",Value
-    20,81,"battery_soc",Value
-    20,82,"motor_power",Value
-    20,83,"vertical_ratio",Value
-    20,84,"stance_time_balance",Value
-    20,85,"step_length",Value
-    20,87,"cycle_length16",Value
-    20,91,"absolute_pressure",Value
-    20,92,"depth",Value
-    20,93,"next_stop_depth",Value
-    20,94,"next_stop_time",Value
-    20,95,"time_to_surface",Value
-    20,96,"ndl_time",Value
-    20,97,"cns_load",Value
-    20,98,"n2_load",Value
-    20,99,"respiration_rate",Value
-    20,108,"enhanced_respiration_rate",Value
-    20,114,"grit",Value
-    20,115,"flow",Value
-    20,116,"current_stress",Value
-    20,117,"ebike_travel_range",Value
-    20,118,"ebike_battery_level",Value
-    20,119,"ebike_assist_mode",Value
-    20,120,"ebike_assist_level_percent",Value
-    20,123,"air_time_remaining",Value
-    20,124,"pressure_sac",Value
-    20,125,"volume_sac",Value
-    20,126,"rmv",Value
-    20,127,"ascent_rate",Value
-    20,129,"po2",Value
-    20,139,"core_temperature",Value
     21,253,"timestamp",DateTime
     21,0,"event",Event
     21,1,"event_type",EventType
-    21,2,"data16",Value
-    21,3,"data",Value
-    21,4,"event_group",Value
-    21,7,"score",Value
-    21,8,"opponent_score",Value
-    21,9,"front_gear_num",Value
-    21,10,"front_gear",Value
-    21,11,"rear_gear_num",Value
-    21,12,"rear_gear",Value
     21,13,"device_index",DeviceIndex
     21,14,"activity_type",ActivityType
     21,15,"start_timestamp",DateTime
     21,21,"radar_threat_level_max",RadarThreatLevelType
-    21,22,"radar_threat_count",Value
-    21,23,"radar_threat_avg_approach_speed",Value
-    21,24,"radar_threat_max_approach_speed",Value
     23,253,"timestamp",DateTime
     23,0,"device_index",DeviceIndex
-    23,1,"device_type",Value
     23,2,"manufacturer",Manufacturer
-    23,3,"serial_number",Value
-    23,4,"product",Value
-    23,5,"software_version",Value
-    23,6,"hardware_version",Value
-    23,7,"cum_operating_time",Value
-    23,10,"battery_voltage",Value
     23,11,"battery_status",BatteryStatus
     23,18,"sensor_position",BodyLocation
-    23,19,"descriptor",Value
-    23,20,"ant_transmission_type",Value
-    23,21,"ant_device_number",Value
     23,22,"ant_network",AntNetwork
     23,25,"source_type",SourceType
-    23,27,"product_name",Value
-    23,32,"battery_level",Value
     375,253,"timestamp",DateTime
     375,0,"device_index",DeviceIndex
-    375,1,"battery_voltage",Value
     375,2,"battery_status",BatteryStatus
-    375,3,"battery_identifier",Value
     72,253,"timestamp",DateTime
     72,0,"type",File
     72,1,"manufacturer",Manufacturer
-    72,2,"product",Value
-    72,3,"serial_number",Value
     72,4,"time_created",DateTime
     128,253,"timestamp",DateTime
     128,0,"weather_report",WeatherReport
-    128,1,"temperature",Value
     128,2,"condition",WeatherStatus
-    128,3,"wind_direction",Value
-    128,4,"wind_speed",Value
-    128,5,"precipitation_probability",Value
-    128,6,"temperature_feels_like",Value
-    128,7,"relative_humidity",Value
-    128,8,"location",Value
     128,9,"observed_at_time",DateTime
-    128,10,"observed_location_lat",Value
-    128,11,"observed_location_long",Value
     128,12,"day_of_week",DayOfWeek
-    128,13,"high_temperature",Value
-    128,14,"low_temperature",Value
     129,253,"timestamp",DateTime
-    129,0,"report_id",Value
     129,1,"issue_time",DateTime
     129,2,"expire_time",DateTime
     129,3,"severity",WeatherSeverity
     129,4,"type",WeatherSevereType
     160,253,"timestamp",DateTime
-    160,0,"timestamp_ms",Value
-    160,1,"position_lat",Value
-    160,2,"position_long",Value
-    160,3,"enhanced_altitude",Value
-    160,4,"enhanced_speed",Value
-    160,5,"heading",Value
     160,6,"utc_timestamp",DateTime
-    160,7,"velocity",Value
     161,253,"timestamp",DateTime
-    161,0,"timestamp_ms",Value
     161,1,"camera_event_type",CameraEventType
-    161,2,"camera_file_uuid",Value
     161,3,"camera_orientation",CameraOrientationType
     164,253,"timestamp",DateTime
-    164,0,"timestamp_ms",Value
-    164,1,"sample_time_offset",Value
-    164,2,"gyro_x",Value
-    164,3,"gyro_y",Value
-    164,4,"gyro_z",Value
-    164,5,"calibrated_gyro_x",Value
-    164,6,"calibrated_gyro_y",Value
-    164,7,"calibrated_gyro_z",Value
     165,253,"timestamp",DateTime
-    165,0,"timestamp_ms",Value
-    165,1,"sample_time_offset",Value
-    165,2,"accel_x",Value
-    165,3,"accel_y",Value
-    165,4,"accel_z",Value
-    165,5,"calibrated_accel_x",Value
-    165,6,"calibrated_accel_y",Value
-    165,7,"calibrated_accel_z",Value
-    165,8,"compressed_calibrated_accel_x",Value
-    165,9,"compressed_calibrated_accel_y",Value
-    165,10,"compressed_calibrated_accel_z",Value
     208,253,"timestamp",DateTime
-    208,0,"timestamp_ms",Value
-    208,1,"sample_time_offset",Value
-    208,2,"mag_x",Value
-    208,3,"mag_y",Value
-    208,4,"mag_z",Value
-    208,5,"calibrated_mag_x",Value
-    208,6,"calibrated_mag_y",Value
-    208,7,"calibrated_mag_z",Value
     209,253,"timestamp",DateTime
-    209,0,"timestamp_ms",Value
-    209,1,"sample_time_offset",Value
-    209,2,"baro_pres",Value
     167,253,"timestamp",DateTime
     167,0,"sensor_type",SensorType
-    167,1,"calibration_factor",Value
-    167,2,"calibration_divisor",Value
-    167,3,"level_shift",Value
-    167,4,"offset_cal",Value
-    167,5,"orientation_matrix",Value
     210,253,"timestamp",DateTime
     210,0,"sensor_type",SensorType
-    210,1,"calibration_factor",Value
-    210,2,"calibration_divisor",Value
-    210,3,"level_shift",Value
-    210,4,"offset_cal",Value
     169,253,"timestamp",DateTime
-    169,0,"timestamp_ms",Value
-    169,1,"frame_number",Value
     174,253,"timestamp",DateTime
-    174,0,"timestamp_ms",Value
-    174,1,"time_offset",Value
-    174,2,"pid",Value
-    174,3,"raw_data",Value
-    174,4,"pid_data_size",Value
-    174,5,"system_time",Value
     174,6,"start_timestamp",DateTime
-    174,7,"start_timestamp_ms",Value
     177,253,"timestamp",DateTime
-    177,0,"timestamp_ms",Value
-    177,1,"sentence",Value
     178,253,"timestamp",DateTime
-    178,0,"timestamp_ms",Value
-    178,1,"system_time",Value
-    178,2,"pitch",Value
-    178,3,"roll",Value
-    178,4,"accel_lateral",Value
-    178,5,"accel_normal",Value
-    178,6,"turn_rate",Value
     178,7,"stage",AttitudeStage
-    178,8,"attitude_stage_complete",Value
-    178,9,"track",Value
     178,10,"validity",AttitudeValidity
-    184,0,"url",Value
-    184,1,"hosting_provider",Value
-    184,2,"duration",Value
     185,254,"message_index",MessageIndex
-    185,0,"message_count",Value
-    185,1,"text",Value
     186,254,"message_index",MessageIndex
-    186,0,"message_count",Value
-    186,1,"text",Value
-    187,0,"clip_number",Value
     187,1,"start_timestamp",DateTime
-    187,2,"start_timestamp_ms",Value
     187,3,"end_timestamp",DateTime
-    187,4,"end_timestamp_ms",Value
-    187,6,"clip_start",Value
-    187,7,"clip_end",Value
     225,254,"timestamp",DateTime
-    225,0,"duration",Value
-    225,3,"repetitions",Value
-    225,4,"weight",Value
     225,5,"set_type",SetType
     225,6,"start_time",DateTime
     225,7,"category",ExerciseCategory
-    225,8,"category_subtype",Value
     225,9,"weight_display_unit",FitBaseUnit
     225,10,"message_index",MessageIndex
     225,11,"wkt_step_index",MessageIndex
     285,253,"timestamp",DateTime
-    285,0,"distance",Value
-    285,1,"height",Value
-    285,2,"rotations",Value
-    285,3,"hang_time",Value
-    285,4,"score",Value
-    285,5,"position_lat",Value
-    285,6,"position_long",Value
-    285,7,"speed",Value
-    285,8,"enhanced_speed",Value
     312,254,"message_index",MessageIndex
     312,0,"split_type",SplitType
-    312,1,"total_elapsed_time",Value
-    312,2,"total_timer_time",Value
-    312,3,"total_distance",Value
-    312,4,"avg_speed",Value
     312,9,"start_time",DateTime
-    312,13,"total_ascent",Value
-    312,14,"total_descent",Value
-    312,21,"start_position_lat",Value
-    312,22,"start_position_long",Value
-    312,23,"end_position_lat",Value
-    312,24,"end_position_long",Value
-    312,25,"max_speed",Value
-    312,26,"avg_vert_speed",Value
     312,27,"end_time",DateTime
-    312,28,"total_calories",Value
-    312,74,"start_elevation",Value
-    312,110,"total_moving_time",Value
     313,254,"message_index",MessageIndex
     313,0,"split_type",SplitType
-    313,3,"num_splits",Value
-    313,4,"total_timer_time",Value
-    313,5,"total_distance",Value
-    313,6,"avg_speed",Value
-    313,7,"max_speed",Value
-    313,8,"total_ascent",Value
-    313,9,"total_descent",Value
-    313,10,"avg_heart_rate",Value
-    313,11,"max_heart_rate",Value
-    313,12,"avg_vert_speed",Value
-    313,13,"total_calories",Value
-    313,77,"total_moving_time",Value
     317,253,"timestamp",DateTime
-    317,0,"position_lat",Value
-    317,1,"position_long",Value
     317,2,"climb_pro_event",ClimbProEvent
-    317,3,"climb_number",Value
-    317,4,"climb_category",Value
-    317,5,"current_dist",Value
-    206,0,"developer_data_index",Value
-    206,1,"field_definition_number",Value
     206,2,"fit_base_type_id",FitBaseType
-    206,3,"field_name",Value
-    206,4,"array",Value
-    206,5,"components",Value
-    206,6,"scale",Value
-    206,7,"offset",Value
-    206,8,"units",Value
-    206,9,"bits",Value
-    206,10,"accumulate",Value
     206,13,"fit_base_unit_id",FitBaseUnit
     206,14,"native_mesg_num",MesgNum
-    206,15,"native_field_num",Value
-    207,0,"developer_id",Value
-    207,1,"application_id",Value
     207,2,"manufacturer_id",Manufacturer
-    207,3,"developer_data_index",Value
-    207,4,"application_version",Value
     31,4,"sport",Sport
-    31,5,"name",Value
     31,6,"capabilities",CourseCapabilities
     31,7,"sub_sport",SubSport
     32,254,"message_index",MessageIndex
     32,1,"timestamp",DateTime
-    32,2,"position_lat",Value
-    32,3,"position_long",Value
-    32,4,"distance",Value
     32,5,"type",CoursePoint
-    32,6,"name",Value
-    32,8,"favorite",Bool
-    148,0,"name",Value
-    148,1,"uuid",Value
     148,2,"sport",Sport
-    148,3,"enabled",Bool
-    148,4,"user_profile_primary_key",Value
-    148,5,"device_id",Value
-    148,6,"default_race_leader",Value
     148,7,"delete_status",SegmentDeleteStatus
     148,8,"selection_type",SegmentSelectionType
     149,254,"message_index",MessageIndex
-    149,0,"name",Value
     149,1,"type",SegmentLeaderboardType
-    149,2,"group_primary_key",Value
-    149,3,"activity_id",Value
-    149,4,"segment_time",Value
-    149,5,"activity_id_string",Value
     150,254,"message_index",MessageIndex
-    150,1,"position_lat",Value
-    150,2,"position_long",Value
-    150,3,"distance",Value
-    150,4,"altitude",Value
-    150,5,"leader_time",Value
-    150,6,"enhanced_altitude",Value
     142,254,"message_index",MessageIndex
     142,253,"timestamp",DateTime
     142,0,"event",Event
     142,1,"event_type",EventType
     142,2,"start_time",DateTime
-    142,3,"start_position_lat",Value
-    142,4,"start_position_long",Value
-    142,5,"end_position_lat",Value
-    142,6,"end_position_long",Value
-    142,7,"total_elapsed_time",Value
-    142,8,"total_timer_time",Value
-    142,9,"total_distance",Value
-    142,10,"total_cycles",Value
-    142,11,"total_calories",Value
-    142,12,"total_fat_calories",Value
-    142,13,"avg_speed",Value
-    142,14,"max_speed",Value
-    142,15,"avg_heart_rate",Value
-    142,16,"max_heart_rate",Value
-    142,17,"avg_cadence",Value
-    142,18,"max_cadence",Value
-    142,19,"avg_power",Value
-    142,20,"max_power",Value
-    142,21,"total_ascent",Value
-    142,22,"total_descent",Value
     142,23,"sport",Sport
-    142,24,"event_group",Value
-    142,25,"nec_lat",Value
-    142,26,"nec_long",Value
-    142,27,"swc_lat",Value
-    142,28,"swc_long",Value
-    142,29,"name",Value
-    142,30,"normalized_power",Value
     142,31,"left_right_balance",LeftRightBalanceOne00
     142,32,"sub_sport",SubSport
-    142,33,"total_work",Value
-    142,34,"avg_altitude",Value
-    142,35,"max_altitude",Value
-    142,36,"gps_accuracy",Value
-    142,37,"avg_grade",Value
-    142,38,"avg_pos_grade",Value
-    142,39,"avg_neg_grade",Value
-    142,40,"max_pos_grade",Value
-    142,41,"max_neg_grade",Value
-    142,42,"avg_temperature",Value
-    142,43,"max_temperature",Value
-    142,44,"total_moving_time",Value
-    142,45,"avg_pos_vertical_speed",Value
-    142,46,"avg_neg_vertical_speed",Value
-    142,47,"max_pos_vertical_speed",Value
-    142,48,"max_neg_vertical_speed",Value
-    142,49,"time_in_hr_zone",Value
-    142,50,"time_in_speed_zone",Value
-    142,51,"time_in_cadence_zone",Value
-    142,52,"time_in_power_zone",Value
-    142,53,"repetition_num",Value
-    142,54,"min_altitude",Value
-    142,55,"min_heart_rate",Value
-    142,56,"active_time",Value
     142,57,"wkt_step_index",MessageIndex
     142,58,"sport_event",SportEvent
-    142,59,"avg_left_torque_effectiveness",Value
-    142,60,"avg_right_torque_effectiveness",Value
-    142,61,"avg_left_pedal_smoothness",Value
-    142,62,"avg_right_pedal_smoothness",Value
-    142,63,"avg_combined_pedal_smoothness",Value
     142,64,"status",SegmentLapStatus
-    142,65,"uuid",Value
-    142,66,"avg_fractional_cadence",Value
-    142,67,"max_fractional_cadence",Value
-    142,68,"total_fractional_cycles",Value
-    142,69,"front_gear_shift_count",Value
-    142,70,"rear_gear_shift_count",Value
-    142,71,"time_standing",Value
-    142,72,"stand_count",Value
-    142,73,"avg_left_pco",Value
-    142,74,"avg_right_pco",Value
-    142,75,"avg_left_power_phase",Value
-    142,76,"avg_left_power_phase_peak",Value
-    142,77,"avg_right_power_phase",Value
-    142,78,"avg_right_power_phase_peak",Value
-    142,79,"avg_power_position",Value
-    142,80,"max_power_position",Value
-    142,81,"avg_cadence_position",Value
-    142,82,"max_cadence_position",Value
     142,83,"manufacturer",Manufacturer
-    142,84,"total_grit",Value
-    142,85,"total_flow",Value
-    142,86,"avg_grit",Value
-    142,87,"avg_flow",Value
-    142,89,"total_fractional_ascent",Value
-    142,90,"total_fractional_descent",Value
-    142,91,"enhanced_avg_altitude",Value
-    142,92,"enhanced_max_altitude",Value
-    142,93,"enhanced_min_altitude",Value
     151,254,"message_index",MessageIndex
-    151,1,"file_uuid",Value
-    151,3,"enabled",Bool
-    151,4,"user_profile_primary_key",Value
     151,7,"leader_type",SegmentLeaderboardType
-    151,8,"leader_group_primary_key",Value
-    151,9,"leader_activity_id",Value
-    151,10,"leader_activity_id_string",Value
-    151,11,"default_race_leader",Value
     26,254,"message_index",MessageIndex
     26,4,"sport",Sport
     26,5,"capabilities",WorkoutCapabilities
-    26,6,"num_valid_steps",Value
-    26,8,"wkt_name",Value
     26,11,"sub_sport",SubSport
-    26,14,"pool_length",Value
     26,15,"pool_length_unit",DisplayMeasure
     158,254,"message_index",MessageIndex
     158,0,"sport",Sport
     158,1,"sub_sport",SubSport
-    158,2,"num_valid_steps",Value
-    158,3,"first_step_index",Value
-    158,4,"pool_length",Value
     158,5,"pool_length_unit",DisplayMeasure
     27,254,"message_index",MessageIndex
-    27,0,"wkt_step_name",Value
     27,1,"duration_type",WktStepDuration
-    27,2,"duration_value",Value
     27,3,"target_type",WktStepTarget
-    27,4,"target_value",Value
-    27,5,"custom_target_value_low",Value
-    27,6,"custom_target_value_high",Value
     27,7,"intensity",Intensity
-    27,8,"notes",Value
     27,9,"equipment",WorkoutEquipment
     27,10,"exercise_category",ExerciseCategory
-    27,11,"exercise_name",Value
-    27,12,"exercise_weight",Value
     27,13,"weight_display_unit",FitBaseUnit
     27,19,"secondary_target_type",WktStepTarget
-    27,20,"secondary_target_value",Value
-    27,21,"secondary_custom_target_value_low",Value
-    27,22,"secondary_custom_target_value_high",Value
     264,254,"message_index",MessageIndex
     264,0,"exercise_category",ExerciseCategory
-    264,1,"exercise_name",Value
-    264,2,"wkt_step_name",Value
     28,0,"manufacturer",Manufacturer
-    28,1,"product",Value
-    28,2,"serial_number",Value
     28,3,"time_created",DateTime
-    28,4,"completed",Bool
     28,5,"type",Schedule
     28,6,"scheduled_time",LocalDateTime
     33,254,"message_index",MessageIndex
     33,253,"timestamp",DateTime
-    33,0,"timer_time",Value
-    33,1,"distance",Value
-    33,2,"calories",Value
     33,3,"sport",Sport
-    33,4,"elapsed_time",Value
-    33,5,"sessions",Value
-    33,6,"active_time",Value
-    33,9,"sport_index",Value
     30,253,"timestamp",DateTime
     30,0,"weight",Weight
-    30,1,"percent_fat",Value
-    30,2,"percent_hydration",Value
-    30,3,"visceral_fat_mass",Value
-    30,4,"bone_mass",Value
-    30,5,"muscle_mass",Value
-    30,7,"basal_met",Value
-    30,8,"physique_rating",Value
-    30,9,"active_met",Value
-    30,10,"metabolic_age",Value
-    30,11,"visceral_fat_rating",Value
     30,12,"user_profile_index",MessageIndex
-    30,13,"bmi",Value
     51,253,"timestamp",DateTime
-    51,0,"systolic_pressure",Value
-    51,1,"diastolic_pressure",Value
-    51,2,"mean_arterial_pressure",Value
-    51,3,"map_3_sample_mean",Value
-    51,4,"map_morning_values",Value
-    51,5,"map_evening_values",Value
-    51,6,"heart_rate",Value
     51,7,"heart_rate_type",HrType
     51,8,"status",BpStatus
     51,9,"user_profile_index",MessageIndex
     103,253,"timestamp",DateTime
     103,0,"local_timestamp",LocalDateTime
     103,1,"activity_type",ActivityType
-    103,3,"cycles_to_distance",Value
-    103,4,"cycles_to_calories",Value
-    103,5,"resting_metabolic_rate",Value
     55,253,"timestamp",DateTime
     55,0,"device_index",DeviceIndex
-    55,1,"calories",Value
-    55,2,"distance",Value
-    55,3,"cycles",Value
-    55,4,"active_time",Value
     55,5,"activity_type",ActivityType
     55,6,"activity_subtype",ActivitySubtype
     55,7,"activity_level",ActivityLevel
-    55,8,"distance_16",Value
-    55,9,"cycles_16",Value
-    55,10,"active_time_16",Value
     55,11,"local_timestamp",LocalDateTime
-    55,12,"temperature",Value
-    55,14,"temperature_min",Value
-    55,15,"temperature_max",Value
-    55,16,"activity_time",Value
-    55,19,"active_calories",Value
-    55,24,"current_activity_type_intensity",Value
-    55,25,"timestamp_min_8",Value
-    55,26,"timestamp_16",Value
-    55,27,"heart_rate",Value
-    55,28,"intensity",Value
-    55,29,"duration_min",Value
-    55,30,"duration",Value
-    55,31,"ascent",Value
-    55,32,"descent",Value
-    55,33,"moderate_activity_minutes",Value
-    55,34,"vigorous_activity_minutes",Value
     211,253,"timestamp",DateTime
-    211,0,"resting_heart_rate",Value
-    211,1,"current_day_resting_heart_rate",Value
     269,253,"timestamp",DateTime
-    269,0,"reading_spo2",Value
-    269,1,"reading_confidence",Value
     269,2,"mode",SpotwoMeasurementType
     132,253,"timestamp",DateTime
-    132,0,"fractional_timestamp",Value
-    132,1,"time256",Value
-    132,6,"filtered_bpm",Value
-    132,9,"event_timestamp",Value
-    132,10,"event_timestamp_12",Value
-    227,0,"stress_level_value",Value
     227,1,"stress_level_time",DateTime
     229,0,"update_time",DateTime
-    229,2,"vo2_max",Value
     229,5,"sport",Sport
     229,6,"sub_sport",SubSport
     229,8,"max_met_category",MaxMetCategory
-    229,9,"calibrated_data",Bool
     229,12,"hr_source",MaxMetHeartRateSource
     229,13,"speed_source",MaxMetSpeedSource
     314,253,"timestamp",DateTime
-    314,0,"processing_interval",Value
-    314,1,"level",Value
-    314,2,"charged",Value
-    314,3,"uncharged",Value
     315,253,"timestamp",DateTime
-    315,0,"event_id",Value
     302,253,"timestamp",DateTime
-    302,0,"timestamp_ms",Value
-    302,1,"sampling_interval",Value
-    302,2,"accel_x",Value
-    302,3,"accel_y",Value
-    302,4,"accel_z",Value
-    302,5,"timestamp_32k",Value
     376,253,"timestamp",DateTime
-    376,0,"timestamp_ms",Value
-    376,1,"sampling_interval",Value
-    376,2,"gyro_x",Value
-    376,3,"gyro_y",Value
-    376,4,"gyro_z",Value
-    376,5,"timestamp_32k",Value
     304,253,"timestamp",DateTime
-    304,0,"processing_interval",Value
-    304,1,"steps",Value
     305,253,"timestamp",DateTime
-    305,0,"processing_interval",Value
-    305,1,"reading_spo2",Value
-    305,2,"confidence",Value
     306,253,"timestamp",DateTime
-    306,0,"processing_interval",Value
-    306,1,"stress_level",Value
     307,253,"timestamp",DateTime
-    307,0,"processing_interval",Value
-    307,1,"respiration_rate",Value
     308,253,"timestamp",DateTime
-    308,0,"processing_interval",Value
-    308,1,"status",Value
-    308,2,"heart_rate",Value
     389,253,"timestamp",DateTime
-    389,0,"data",Value
-    389,1,"data_size",Value
     409,253,"timestamp",DateTime
-    409,0,"processing_interval",Value
-    409,1,"value",Value
-    145,250,"part_index",Value
-    145,0,"memo",Value
     145,1,"mesg_num",MesgNum
     145,2,"parent_index",MessageIndex
-    145,3,"field_num",Value
-    145,4,"data",Value
     275,253,"timestamp",DateTime
     275,0,"sleep_level",SleepLevel
-    82,0,"channel_number",Value
-    82,1,"device_type",Value
-    82,2,"device_number",Value
-    82,3,"transmission_type",Value
     82,4,"device_index",DeviceIndex
     80,253,"timestamp",DateTime
-    80,0,"fractional_timestamp",Value
-    80,1,"mesg_id",Value
-    80,2,"mesg_data",Value
-    80,3,"channel_number",Value
-    80,4,"data",Value
     81,253,"timestamp",DateTime
-    81,0,"fractional_timestamp",Value
-    81,1,"mesg_id",Value
-    81,2,"mesg_data",Value
-    81,3,"channel_number",Value
-    81,4,"data",Value
-    200,0,"screen_index",Value
-    200,1,"field_count",Value
     200,2,"layout",ExdLayout
-    200,3,"screen_enabled",Bool
-    201,0,"screen_index",Value
-    201,1,"concept_field",Value
-    201,2,"field_id",Value
-    201,3,"concept_count",Value
     201,4,"display_type",ExdDisplayType
-    201,5,"title",Value
-    202,0,"screen_index",Value
-    202,1,"concept_field",Value
-    202,2,"field_id",Value
-    202,3,"concept_index",Value
-    202,4,"data_page",Value
-    202,5,"concept_key",Value
-    202,6,"scaling",Value
     202,8,"data_units",ExdDataUnits
     202,9,"qualifier",ExdQualifiers
     202,10,"descriptor",ExdDescriptors
-    202,11,"is_signed",Bool
     268,253,"timestamp",DateTime
     268,0,"reference_mesg",MesgNum
     268,1,"reference_index",MessageIndex
-    268,2,"avg_depth",Value
-    268,3,"max_depth",Value
-    268,4,"surface_interval",Value
-    268,5,"start_cns",Value
-    268,6,"end_cns",Value
-    268,7,"start_n2",Value
-    268,8,"end_n2",Value
-    268,9,"o2_toxicity",Value
-    268,10,"dive_number",Value
-    268,11,"bottom_time",Value
-    268,12,"avg_pressure_sac",Value
-    268,13,"avg_volume_sac",Value
-    268,14,"avg_rmv",Value
-    268,15,"descent_time",Value
-    268,16,"ascent_time",Value
-    268,17,"avg_ascent_rate",Value
-    268,22,"avg_descent_rate",Value
-    268,23,"max_ascent_rate",Value
-    268,24,"max_descent_rate",Value
-    268,25,"hang_time",Value
     289,253,"timestamp",DateTime
-    289,0,"time",Value
-    289,1,"energy_total",Value
-    289,2,"zero_cross_cnt",Value
-    289,3,"instance",Value
-    289,4,"time_above_threshold",Value
-    78,0,"time",Value
     290,253,"timestamp",DateTime
-    290,0,"timestamp_ms",Value
-    290,1,"time",Value
     370,253,"timestamp",DateTime
-    370,0,"weekly_average",Value
-    370,1,"last_night_average",Value
-    370,2,"last_night_5_min_high",Value
-    370,3,"baseline_low_upper",Value
-    370,4,"baseline_balanced_lower",Value
-    370,5,"baseline_balanced_upper",Value
     370,6,"status",HrvStatus
     371,253,"timestamp",DateTime
-    371,0,"value",Value
     372,253,"timestamp",DateTime
-    372,0,"timestamp_ms",Value
-    372,1,"data",Value
-    372,2,"time",Value
-    372,3,"quality",Value
-    372,4,"gap",Value
     297,253,"timestamp",DateTime
-    297,0,"respiration_rate",Value
     387,253,"timestamp",DateTime
-    387,0,"min_speed",Value
-    387,1,"max_speed",Value
-    387,2,"avg_speed",Value
-    387,3,"shot_count",Value
     387,4,"projectile_type",ProjectileType
-    387,5,"grain_weight",Value
     388,253,"timestamp",DateTime
-    388,0,"shot_speed",Value
-    388,1,"shot_num",Value
     319,253,"timestamp",DateTime
     319,0,"sensor",AntChannelId
-    319,1,"pressure",Value
     323,253,"timestamp",DateTime
     323,0,"sensor",AntChannelId
-    323,1,"start_pressure",Value
-    323,2,"end_pressure",Value
-    323,3,"volume_used",Value
-        }
+
+    }
 }

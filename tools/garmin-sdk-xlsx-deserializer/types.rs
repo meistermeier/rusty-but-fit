@@ -2419,7 +2419,7 @@ crate::key_value_enum! {
 		VirtualPartner = 5,
 		Balance = 6,
 		StringList = 7,
-		Value = 8,
+		StringValue = 8,
 		SimpleDynamicIcon = 9,
 		Gauge = 10,
 	}
@@ -2653,22 +2653,22 @@ crate::key_value_enum! {
 crate::key_value_enum! {
 	pub enum FitBaseType { 
 		Enum = 0,
-		Value = 1,
-		Value = 2,
-		Value = 131,
-		Value = 132,
-		Value = 133,
-		Value = 134,
-		Value = 7,
-		Value = 136,
-		Value = 137,
-		Value = 10,
-		Value = 139,
-		Value = 140,
-		Value = 13,
-		Value = 142,
-		Value = 143,
-		Value = 144,
+		NumberValueS8 = 1,
+		NumberValueU8 = 2,
+		NumberValueS16 = 131,
+		NumberValueU16 = 132,
+		NumberValueS32 = 133,
+		NumberValueU32 = 134,
+		StringValue = 7,
+		NumberValueU64 = 136,
+		NumberValueU64 = 137,
+		NumberValueU8 = 10,
+		NumberValueU16 = 139,
+		NumberValueU32 = 140,
+		NumberValueU8 = 13,
+		NumberValueS64 = 142,
+		NumberValueU64 = 143,
+		NumberValueU64 = 144,
 	}
 }
 crate::key_value_enum! {
@@ -4342,5 +4342,11 @@ crate::key_value_enum! {
 		Low = 2,
 		Unbalanced = 3,
 		Balanced = 4,
+	}
+}
+crate::key_value_enum! {
+	pub enum NoFlyTimeMode { 
+		Standard = 0,
+		FlatTwofourHours = 1,
 	}
 }

@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use serde_with::serde_derive::Serialize;
 
-use crate::data_types::{BaseType, Value};
+use crate::data_types::BaseType;
 use crate::fields::Field;
 use crate::fit_file::FitFileConfig;
 use crate::Message;
+use crate::message::MessageMap;
 
 pub struct MessageDefinition {
     pub message_type: MessageType,
@@ -13,9 +14,14 @@ pub struct MessageDefinition {
 }
 
 impl MessageDefinition {
-    pub fn read(&self, current_position: &usize, buffer: &Vec<u8>, args: &FitFileConfig) -> (Message, usize) {
-        let print_unknown = args.include_unknown_fields;
-        let print_invalid = args.include_invalid_fields;
+    pub fn read(
+        &self,
+        current_position: &usize,
+        buffer: &Vec<u8>,
+        config: &FitFileConfig,
+    ) -> (Message, usize) {
+        let print_unknown = config.include_unknown_fields;
+        let print_invalid = config.include_invalid_values;
         let mut position = current_position.clone();
         let mut data_map = HashMap::new();
         for field_definition in self.fields.iter().clone() {
@@ -24,14 +30,12 @@ impl MessageDefinition {
             let value = ((field_definition.base_type).read)(&field_definition.base_type, data);
             let data_field = &field_definition.field;
             position += field_definition.size as usize;
-            if (!data_field.is_unknown() || print_unknown) && (!value.eq(&Value::Invalid) || print_invalid) {
+            if (!data_field.is_unknown() || print_unknown) && (!value.is_invalid() || print_invalid)
+            {
                 data_map.insert(data_field.clone(), value.clone());
             }
         }
-        (
-            Message::from(self.message_type.clone(), data_map),
-            position,
-        )
+        (Message::from(self.message_type.clone(), MessageMap {data: data_map}), position)
     }
 }
 

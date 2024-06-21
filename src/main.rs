@@ -9,11 +9,11 @@ use crate::message::Message;
 
 mod data_types;
 mod fields;
+mod fit_file;
 mod key_value_enum;
+mod message;
 mod message_types;
 mod types;
-mod message;
-mod fit_file;
 
 // CLI / clap definitions
 #[derive(Parser)]
@@ -27,8 +27,12 @@ struct Cli {
     file: String,
     #[arg(short, help = "Debug output (cannot be piped to jq)")]
     debug: bool,
-    #[arg(short, long, help = "Message type as enumerated from 'summary' command")]
-    message_type: Option<String>,
+    #[arg(
+        short,
+        long,
+        help = "Message types as enumerated from 'summary' command"
+    )]
+    message_types: Vec<String>,
     #[arg(short, long, help = "Output unknown fields")]
     unknown_fields: bool,
     #[arg(short, long, help = "Output invalid values")]
@@ -39,7 +43,8 @@ struct Cli {
 enum Commands {
     Summary,
     Messages,
-    Dump
+    Dump,
+    Raw,
 }
 
 fn main() {
@@ -56,22 +61,32 @@ fn main() {
     let mut buffer = Vec::new();
 
     reader.read_to_end(&mut buffer).unwrap();
-    let fit_file_config = FitFileConfig {
-        debug: args.debug,
-        include_unknown_fields: args.unknown_fields,
-        include_invalid_fields: args.invalid_values,
+    let fit_file_config = match args.command {
+        Commands::Raw =>
+        // enforce raw jq parsable output
+        // * no debug message
+        // * include unknown fields and invalid values
+        {
+            FitFileConfig {
+                debug: false,
+                include_unknown_fields: true,
+                include_invalid_values: true,
+            }
+        }
+        _ => FitFileConfig {
+            debug: args.debug,
+            include_unknown_fields: args.unknown_fields,
+            include_invalid_values: args.invalid_values,
+        },
     };
     let fit_file = FitFile::from(&buffer, &fit_file_config);
     match args.command {
-        Commands::Summary => {
-            println!("{:?}", fit_file.get_message_types());
-        },
+        Commands::Summary => println!("{:?}", fit_file.get_message_types()),
         Commands::Messages => {
-            let result = fit_file.get_messages(args.message_type.unwrap().as_str());
+            let result = fit_file.get_messages(args.message_types);
             println!("{}", serde_json::to_string(&result).unwrap());
-        },
-        Commands::Dump => {
-            println!("{}", serde_json::to_string(&fit_file).unwrap());
         }
+        Commands::Dump => println!("{}", serde_json::to_string(&fit_file).unwrap()),
+        Commands::Raw => println!("{}", serde_json::to_string(&fit_file).unwrap()),
     }
 }
