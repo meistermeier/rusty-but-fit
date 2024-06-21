@@ -5,8 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       target_tag:
-        required: false
-        default: ${{ github.ref_name }}
+        required: true
         description: "tag to add binaries to"
 
 jobs:
