@@ -41,4 +41,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:
-          gh release upload v0.3 target/release/rusty-but-fit${{ matrix.file-suffix }}
+          gh release upload v0.3 target/release/rusty-but-fit${{ matrix.file-suffix }}#rusty-but-fit-${{ matrix.suffix }}
