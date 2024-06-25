@@ -4,9 +4,8 @@ use serde::Serialize;
 
 use crate::data_types::BaseType;
 use crate::fields::Field;
-use crate::fit_file::FitFileConfig;
 use crate::message::MessageMap;
-use crate::Message;
+use crate::{FitFileConfig, Message};
 
 pub struct MessageDefinition {
     pub message_type: MessageType,

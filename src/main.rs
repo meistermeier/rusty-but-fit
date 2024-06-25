@@ -4,16 +4,7 @@ use std::io::Read;
 
 use clap::{Args, Parser, Subcommand};
 
-use crate::fit_file::{FitFile, FitFileConfig};
-use crate::message::Message;
-
-mod data_types;
-mod fields;
-mod fit_file;
-mod key_value_enum;
-mod message;
-mod message_types;
-mod types;
+use garmin_fit::{FitFile, FitFileConfig};
 
 // CLI / clap definitions
 #[derive(Parser)]

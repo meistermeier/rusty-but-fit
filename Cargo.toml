@@ -3,9 +3,17 @@ name = "rusty-but-fit"
 version = "0.4.0"
 edition = "2021"
 license = "MIT"
-description = "Allow to read Garmin's .FIT files and outputs them as JSON."
+description = "Read Garmin's .FIT files and output them as JSON."
 repository = "https://github.com/meistermeier/rusty-but-fit"
 readme = "README.md"
+
+[lib]
+name = "garmin_fit"
+path = "src/fit_file.rs"
+
+[[bin]]
+name = "rusty-but-fit"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5.7", features = ["derive"] }

@@ -4,23 +4,36 @@ use itertools::Itertools;
 
 use serde::Serialize;
 
+mod data_types;
+mod fields;
+pub mod message;
+mod message_types;
+mod types;
+
+mod key_value_enum;
+
 use crate::data_types::BaseType;
 use crate::fields::Field;
 use crate::message::{Header, Message};
 use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 
+/// Configuration for FIT file parsing
 pub struct FitFileConfig {
+    /// debug output
     pub debug: bool,
+    /// include fields that are unknown
     pub include_unknown_fields: bool,
+    /// include values that are parsed invalid
     pub include_invalid_values: bool,
 }
 #[derive(Serialize)]
 pub struct FitFile {
-    header: Header,
-    messages: Vec<Message>,
+    pub header: Header,
+    pub messages: Vec<Message>,
 }
 
 impl FitFile {
+    /// returns [messages](Message) filtered by [message type](Vec<String>)
     pub fn get_messages(&self, message_types: Vec<String>) -> Vec<&Message> {
         let vec = &self.messages;
         vec.into_iter()
