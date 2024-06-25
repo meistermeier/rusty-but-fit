@@ -79,12 +79,16 @@ impl Header {
 
 pub struct Message {
     pub message_type: MessageType,
-    data: MessageMap,
+    pub data: MessageMap,
 }
 
 impl Message {
     pub fn from(message_type: MessageType, data: MessageMap) -> Message {
         Message { message_type, data }
+    }
+
+    fn is_unknown(&self) -> bool {
+        self.message_type.name.eq("Unknown")
     }
 }
 
@@ -151,9 +155,18 @@ impl Serialize for Message {
         let mut serialized = serializer
             .serialize_struct(self.message_type.name, 2)
             .unwrap();
-        serialized
-            .serialize_field("message_type", self.message_type.name)
-            .unwrap();
+        if self.is_unknown() {
+            let message_number = self.message_type.number;
+            let mut field_value = "Unknown".to_string();
+            field_value.push_str(message_number.to_string().as_str());
+            serialized
+                .serialize_field("message_type", &field_value)
+                .unwrap();
+        } else {
+            serialized
+                .serialize_field("message_type", self.message_type.name)
+                .unwrap();
+        }
         serialized.serialize_field("message", &self.data).unwrap();
         serialized.end()
     }

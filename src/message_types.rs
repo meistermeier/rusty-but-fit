@@ -452,10 +452,6 @@ impl MessageType {
         number: 147,
         name: "Connected devices (undocumented)",
     };
-    pub const UNKNOWN: MessageType = MessageType {
-        number: 1024,
-        name: "Unknown",
-    };
 
     pub fn resolve(i: u16) -> MessageType {
         match i {
@@ -554,7 +550,10 @@ impl MessageType {
             0xFF00 => Self::MFG_RANGE_MIN,
             0xFFFE => Self::MFG_RANGE_MAX,
             147 => Self::UNDOCUMENTED_CONNECTED_DEVICES,
-            1024 | _ => Self::UNKNOWN,
+            1024 | _ => MessageType {
+                number: i,
+                name: "Unknown",
+            },
         }
     }
 }
