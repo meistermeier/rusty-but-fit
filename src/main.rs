@@ -32,6 +32,8 @@ enum Commands {
     Messages(MessagesArgs),
     #[command(about = "Outputs all messages, incl. unknown messages and invalid fields")]
     Raw,
+    #[command(about = "Show parsed header")]
+    Header,
 }
 
 #[derive(Args)]
@@ -85,5 +87,6 @@ fn main() {
             println!("{}", serde_json::to_string(&result).unwrap());
         }
         Commands::Raw => println!("{}", serde_json::to_string(&fit_file).unwrap()),
+        Commands::Header => println!("{}", serde_json::to_string(&fit_file.header).unwrap()),
     }
 }
