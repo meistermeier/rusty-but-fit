@@ -14,6 +14,8 @@ pub enum Value {
     StringValue(String),
     NumberValueS64(i64),
     NumberValueU64(u64),
+    NumberValueF32(f32),
+    NumberValueF64(f64),
     NumberValueVecS8(Vec<i8>),
     NumberValueVecU8(Vec<u8>),
     NumberValueVecS16(Vec<i16>),
@@ -22,6 +24,8 @@ pub enum Value {
     NumberValueVecU32(Vec<u32>),
     NumberValueVecS64(Vec<i64>),
     NumberValueVecU64(Vec<u64>),
+    NumberValueVecF32(Vec<f32>),
+    NumberValueVecF64(Vec<f64>),
     Invalid,
 }
 
@@ -55,6 +59,10 @@ impl Value {
             Value::NumberValueS8(value) => serializer.serialize_i8(value.clone()),
             Value::NumberValueVecS8(value) => serializer.serialize_some(value),
             Value::StringValue(value) => serializer.serialize_str(value.as_str()),
+            Value::NumberValueF32(value) => serializer.serialize_f32(value.clone()),
+            Value::NumberValueF64(value) => serializer.serialize_f64(value.clone()),
+            Value::NumberValueVecF32(value) => serializer.serialize_some(value),
+            Value::NumberValueVecF64(value) => serializer.serialize_some(value),
             Value::Invalid => serializer.serialize_str("invalid value"),
         }
     }
@@ -92,9 +100,8 @@ impl BaseType {
         UINT16Z, 2, 139, 0x0000, u16, NumberValueU16, NumberValueVecU16
         UINT32Z, 4, 140, 0x00000000, u32, NumberValueU32, NumberValueVecU32
         UINT64Z, 8, 144, 0x0000000000000000, u64, NumberValueU64, NumberValueVecU64
-        // at the moment just placeholders for possible types, haven't seen them yet in official .fit files
-        FLOAT32, 4, 136, 0xFFFFFFF, u64, NumberValueU64, NumberValueVecU64
-        FLOAT64, 8, 137, 0xFFFFFFFFFFFFFFFF, u64, NumberValueU64, NumberValueVecU64
+        FLOAT32, 4, 136, 0xFFFFFFF, f32, NumberValueF32, NumberValueVecF32
+        FLOAT64, 8, 137, 0xFFFFFFFFFFFFFFFF, f64, NumberValueF64, NumberValueVecF64
     }
     // Null terminated string encoded in UTF-8 format
     pub const STRING: BaseType = BaseType {
@@ -133,10 +140,6 @@ impl BaseType {
         BaseType::FLOAT32,
         BaseType::FLOAT64,
     ];
-
-    pub fn is_enum(&self) -> bool {
-        self.type_number == 0
-    }
 
     pub fn parse(value: u8) -> BaseType {
         for base_type in BaseType::ALL_TYPES {
