@@ -1175,7 +1175,6 @@ impl Field {
     346,11,"awakenings_count"
     346,14,"interruptions_score"
     346,15,"average_stress_during_sleep"
-
     }
     crate::expand_fields! {
     0,0,"type",File
@@ -1516,6 +1515,16 @@ impl Field {
     319,0,"sensor",AntChannelId
     323,253,"timestamp",DateTime
     323,0,"sensor",AntChannelId
-
+    113,253,"timestamp",DateTime
+    32,253,"timestamp",DateTime
+    140,253,"timestamp",DateTime
+    69,253,"timestamp",DateTime
+    70,253,"timestamp",DateTime
+    104,253,"timestamp",DateTime
+    120,253,"timestamp",DateTime
+    22,253,"timestamp",DateTime
+    141,253,"timestamp",DateTime
+    79,253,"timestamp",DateTime
+    71,253,"timestamp",DateTime
     }
 }
