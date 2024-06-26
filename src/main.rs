@@ -20,6 +20,8 @@ struct Cli {
     debug: bool,
     #[arg(short, long, help = "Output unknown fields")]
     unknown_fields: bool,
+    #[arg(long, help = "Output unknown message types")]
+    unknown_message_types: bool,
     #[arg(short, long, help = "Output invalid values")]
     invalid_values: bool,
 }
@@ -66,16 +68,19 @@ fn main() {
         // enforce raw jq parsable output
         // * no debug message
         // * include unknown fields and invalid values
+        // * include unknown message types
         {
             FitFileConfig {
                 debug: false,
                 include_unknown_fields: true,
+                include_unknown_message_types: true,
                 include_invalid_values: true,
             }
         }
         _ => FitFileConfig {
             debug: args.debug,
             include_unknown_fields: args.unknown_fields,
+            include_unknown_message_types: args.unknown_message_types,
             include_invalid_values: args.invalid_values,
         },
     };

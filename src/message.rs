@@ -87,8 +87,19 @@ impl Message {
         Message { message_type, data }
     }
 
-    fn is_unknown(&self) -> bool {
+    pub fn is_unknown(&self) -> bool {
         self.message_type.name.eq("Unknown")
+    }
+
+    pub fn display_name(&self) -> String {
+        if self.is_unknown() {
+            let message_number = self.message_type.number;
+            let mut field_value = "Unknown".to_string();
+            field_value.push_str(message_number.to_string().as_str());
+            field_value
+        } else {
+            self.message_type.name.to_string()
+        }
     }
 }
 
@@ -136,7 +147,7 @@ impl Serialize for MessageMap {
                                 let string = (enum_field.translate_enum)(enum_field_value);
                                 map.serialize_value(&string).unwrap()
                             }
-                            _ => unreachable!("Welcome to the abyss"),
+                            _ => map.serialize_value(&entry.1).unwrap(),
                         }
                     }
                 }
@@ -155,18 +166,9 @@ impl Serialize for Message {
         let mut serialized = serializer
             .serialize_struct(self.message_type.name, 2)
             .unwrap();
-        if self.is_unknown() {
-            let message_number = self.message_type.number;
-            let mut field_value = "Unknown".to_string();
-            field_value.push_str(message_number.to_string().as_str());
-            serialized
-                .serialize_field("message_type", &field_value)
-                .unwrap();
-        } else {
-            serialized
-                .serialize_field("message_type", self.message_type.name)
-                .unwrap();
-        }
+        serialized
+            .serialize_field("message_type", &self.display_name())
+            .unwrap();
         serialized.serialize_field("message", &self.data).unwrap();
         serialized.end()
     }

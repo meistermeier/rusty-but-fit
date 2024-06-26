@@ -21,8 +21,10 @@ use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 pub struct FitFileConfig {
     /// debug output
     pub debug: bool,
-    /// include fields that are unknown
+    /// include fields that are unknown to the parser
     pub include_unknown_fields: bool,
+    /// include methods that are unknown to the parser
+    pub include_unknown_message_types: bool,
     /// include values that are parsed invalid
     pub include_invalid_values: bool,
 }
@@ -37,14 +39,14 @@ impl FitFile {
     pub fn get_messages(&self, message_types: Vec<String>) -> Vec<&Message> {
         let vec = &self.messages;
         vec.into_iter()
-            .filter(|message| message_types.contains(&message.message_type.name.to_string()))
+            .filter(|message| message_types.contains(&message.display_name()))
             .collect_vec()
     }
 
     pub fn get_message_types(&self) -> HashMap<String, usize> {
         let vec = &self.messages;
         vec.into_iter()
-            .counts_by(|message| message.message_type.name.to_string())
+            .counts_by(|message| message.display_name().to_string())
     }
 
     pub fn from(buffer: &Vec<u8>, config: &FitFileConfig) -> FitFile {
@@ -97,11 +99,7 @@ impl FitFile {
                     let field_length = buffer[current_position + i2 + 1];
                     let base_type_value = buffer[current_position + i2 + 2];
                     let base_type = BaseType::parse(base_type_value);
-                    let field = if base_type.is_enum() {
-                        Field::resolve_enum(&local_message_type, field_definition_number)
-                    } else {
-                        Field::resolve_field(&local_message_type, field_definition_number)
-                    };
+                    let field = Field::resolve_field(&local_message_type, field_definition_number);
                     let field_definition = FieldDefinition {
                         field,
                         number: field_definition_number,
@@ -128,7 +126,9 @@ impl FitFile {
 
                 let message = definition_message.read(&current_position, buffer, config);
                 current_position = message.1;
-                messages.push(message.0);
+                if !message.0.is_unknown() || config.include_unknown_message_types {
+                    messages.push(message.0);
+                }
             }
         }
 

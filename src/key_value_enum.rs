@@ -31,7 +31,7 @@ macro_rules! key_value_enum {
 #[macro_export]
 macro_rules! expand_fields {
     ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:literal, $enum_type:ident)+)  => {
-        pub fn resolve_enum(message_type: &MessageType, field_number: u8) -> Field {
+        fn resolve_enum(message_type: &MessageType, field_number: u8) -> Field {
             let message_number = message_type.number;
             return match (message_type.number, field_number) {
                 $(
@@ -43,12 +43,11 @@ macro_rules! expand_fields {
     };
     ($($MESG_NUM:literal, $FIELD_NUM:literal, $field_name:literal)+)  => {
         pub fn resolve_field(message_type: &MessageType, field_number: u8) -> Field {
-            let message_number = message_type.number;
             return match (message_type.number, field_number) {
                 $(
                     ($MESG_NUM, $FIELD_NUM) => Field::ValueField(ValueField::from($field_name)),
                 )+
-                _ => Field::Unknown(UnknownField { message_number, field_number }),
+                _ => Field::resolve_enum(message_type, field_number),
             };
         }
     };
