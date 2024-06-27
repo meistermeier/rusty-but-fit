@@ -27,6 +27,8 @@ pub struct FitFileConfig {
     pub include_unknown_message_types: bool,
     /// include values that are parsed invalid
     pub include_invalid_values: bool,
+    /// just parse the header and return the result
+    pub header_only: bool,
 }
 #[derive(Serialize)]
 pub struct FitFile {
@@ -53,6 +55,12 @@ impl FitFile {
         let debug = config.debug;
         let header_info = &buffer[0..14];
         let header = Header::read_header(header_info);
+        if config.header_only {
+            return FitFile {
+                header,
+                messages: vec![]
+            }
+        }
         let mut messages: Vec<Message> = Vec::new();
         if debug {
             println!("{:?}", header);
