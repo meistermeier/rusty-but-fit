@@ -36,6 +36,10 @@ pub struct FitFile {
     pub messages: Vec<Message>,
 }
 
+pub struct ParseConfig {
+    endianness: u8,
+}
+
 impl FitFile {
     /// returns [messages](Message) filtered by [message type](Vec<String>)
     pub fn get_messages(&self, message_types: Vec<String>) -> Vec<&Message> {
@@ -67,8 +71,10 @@ impl FitFile {
         }
         let mut current_position = 14; // position after header
         let mut local_message_types = HashMap::new();
+        let mut parse_configs = HashMap::new();
+        // do the looooooping
         loop {
-            // do the looooooping
+            // exit on message crc
             if current_position == buffer.len() - 2 {
                 if debug {
                     println!(
@@ -79,18 +85,22 @@ impl FitFile {
                 }
                 break;
             }
+            // start: record header
             let header_type: u8 = buffer[current_position] >> 7 & 1;
             let developer_flag: u8 = buffer[current_position] >> 5 & 1;
             let local_message_number: u8 = buffer[current_position] & 0x0F;
             if header_type == 1 {
                 panic!("!! Not implemented !! Compressed timestamp header needs special handling");
             }
-            let parsed_message_type: u8 = buffer[current_position] >> 6 & 1;
+            let definition_message: bool = buffer[current_position] >> 6 & 1 == 1;
             current_position += 1;
+            // end: record header
 
-            // definition message
-            if parsed_message_type == 1 {
+            if definition_message {
                 let mut fields: Vec<FieldDefinition> = vec![];
+                let _reserved = buffer[current_position];// reserved
+                let endianness = buffer[current_position + 1]; // architecture
+                let parse_config = ParseConfig { endianness };
                 current_position += 2; // skip the header part besides the last byte for the field number
                 let type_f1 = buffer[current_position];
                 let type_f2 = buffer[current_position + 1];
@@ -129,10 +139,11 @@ impl FitFile {
                     fields,
                 };
                 local_message_types.insert(local_message_number, definition_message);
+                parse_configs.insert(local_message_number, parse_config);
             } else {
                 let definition_message = local_message_types.get(&local_message_number).unwrap();
-
-                let message = definition_message.read(&current_position, buffer, config);
+                let parse_config = parse_configs.get(&local_message_number).unwrap();
+                let message = definition_message.read(&current_position, buffer, config, parse_config);
                 current_position = message.1;
                 if !message.0.is_unknown() || config.include_unknown_message_types {
                     messages.push(message.0);

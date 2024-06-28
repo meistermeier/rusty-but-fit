@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::data_types::BaseType;
 use crate::fields::Field;
 use crate::message::MessageMap;
-use crate::{FitFileConfig, Message};
+use crate::{FitFileConfig, Message, ParseConfig};
 
 pub struct MessageDefinition {
     pub message_type: MessageType,
@@ -18,6 +18,7 @@ impl MessageDefinition {
         current_position: &usize,
         buffer: &Vec<u8>,
         config: &FitFileConfig,
+        parse_config: &ParseConfig,
     ) -> (Message, usize) {
         let print_unknown = config.include_unknown_fields;
         let print_invalid = config.include_invalid_values;
@@ -26,7 +27,7 @@ impl MessageDefinition {
         for field_definition in self.fields.iter().clone() {
             let end = position + (field_definition.size as usize);
             let data = &buffer[position..end];
-            let value = ((field_definition.base_type).read)(&field_definition.base_type, data);
+            let value = ((field_definition.base_type).read)(&field_definition.base_type, data, parse_config.endianness);
             let data_field = &field_definition.field;
             position += field_definition.size as usize;
             if (!data_field.is_unknown() || print_unknown) && (!value.is_invalid() || print_invalid)

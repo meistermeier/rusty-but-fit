@@ -81,7 +81,7 @@ pub struct BaseType {
     pub read_size: usize,
     pub type_number: u8,
     pub invalid_value: u64,
-    pub read: fn(&BaseType, data: &[u8]) -> Value,
+    pub read: fn(&BaseType, data: &[u8], endianness: u8) -> Value,
 }
 
 impl BaseType {
@@ -108,7 +108,7 @@ impl BaseType {
         read_size: 1,
         type_number: 7,
         invalid_value: 0x00,
-        read: |me, data| {
+        read: |me, data, endianness| {
             let size = data.len();
             let mut value = String::new();
             for i in 0..size {

@@ -61,7 +61,7 @@ macro_rules! base_type {
         read_size: $READ_SIZE,
         type_number:$TYPE_NUMBER,
         invalid_value: $INVALID_VALUE,
-        read: |me, data| {
+        read: |me, data, endianness| {
             let size = data.len();
             // also create vec if type is enum
             if size > me.read_size || me.type_number == 0 {
@@ -82,7 +82,7 @@ macro_rules! base_type {
                     Value::$VALUE_TYPE_VEC(value)
                 }
             } else {
-                let value = <$DATA_TYPE>::from_le_bytes(data.try_into().unwrap());
+                let value = if endianness == 0 {<$DATA_TYPE>::from_le_bytes(data.try_into().unwrap())} else {<$DATA_TYPE>::from_be_bytes(data.try_into().unwrap())};
                 if value == me.invalid_value as $DATA_TYPE {
                     Value::Invalid
                 } else {
