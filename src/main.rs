@@ -44,7 +44,7 @@ struct MessagesArgs {
         short,
         long = "message_type",
         value_name = "MESSAGE_TYPE",
-        help = "Message types as enumerated from 'summary' command. Can be repeated for multiple messages.",
+        help = "Message types as enumerated from 'summary' command. Can be repeated for multiple messages."
     )]
     message_types: Vec<String>,
 }
@@ -69,13 +69,15 @@ fn main() {
         // * no debug message
         // * include unknown fields and invalid values
         // * include unknown message types
+        {
             FitFileConfig {
                 debug: false,
                 include_unknown_fields: true,
                 include_unknown_message_types: true,
                 include_invalid_values: true,
                 header_only: false,
-            },
+            }
+        }
         Commands::Header => FitFileConfig {
             debug: args.debug,
             include_unknown_fields: args.unknown_fields,
@@ -88,7 +90,7 @@ fn main() {
             include_unknown_fields: args.unknown_fields,
             include_unknown_message_types: args.unknown_message_types,
             include_invalid_values: args.invalid_values,
-            header_only: false
+            header_only: false,
         },
     };
     let fit_file = FitFile::from(&buffer, &fit_file_config);

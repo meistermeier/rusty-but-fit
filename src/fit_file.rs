@@ -12,8 +12,8 @@ mod types;
 
 mod key_value_enum;
 
-use crate::data_types::BaseType;
-use crate::fields::Field;
+use crate::data_types::Value;
+use crate::fields::{DeveloperField, Field};
 use crate::message::{Header, Message};
 use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 
@@ -62,16 +62,17 @@ impl FitFile {
         if config.header_only {
             return FitFile {
                 header,
-                messages: vec![]
-            }
+                messages: vec![],
+            };
         }
         let mut messages: Vec<Message> = Vec::new();
         if debug {
             println!("{:?}", header);
         }
         let mut current_position = 14; // position after header
-        let mut local_message_types = HashMap::new();
+        let mut local_message_types: HashMap<u8, MessageDefinition> = HashMap::new();
         let mut parse_configs = HashMap::new();
+        let mut developer_fields = vec![];
         // do the looooooping
         loop {
             // exit on message crc
@@ -98,7 +99,7 @@ impl FitFile {
 
             if definition_message {
                 let mut fields: Vec<FieldDefinition> = vec![];
-                let _reserved = buffer[current_position];// reserved
+                let _reserved = buffer[current_position]; // reserved
                 let endianness = buffer[current_position + 1]; // architecture
                 let parse_config = ParseConfig { endianness };
                 current_position += 2; // skip the header part besides the last byte for the field number
@@ -116,13 +117,12 @@ impl FitFile {
                     let field_definition_number = buffer[current_position + i2 + 0];
                     let field_length = buffer[current_position + i2 + 1];
                     let base_type_value = buffer[current_position + i2 + 2];
-                    let base_type = BaseType::parse(base_type_value);
                     let field = Field::resolve_field(&local_message_type, field_definition_number);
                     let field_definition = FieldDefinition {
                         field,
                         number: field_definition_number,
                         size: field_length,
-                        base_type,
+                        base_type_value_or_dev_index: base_type_value,
                     };
                     fields.push(field_definition);
                 }
@@ -130,8 +130,32 @@ impl FitFile {
 
                 if developer_flag == 1 {
                     let number_of_developer_fields: u8 = buffer[current_position];
+                    // println!("There are {} dev fields", number_of_developer_fields);
                     if number_of_developer_fields > 0 {
-                        panic!("!! Not implemented !! I have dev fields");
+                        current_position += 1;
+                        for i in 0..number_of_developer_fields {
+                            let i2 = (i as i32 * 3) as usize;
+                            let field_definition_number = buffer[current_position + i2 + 0];
+                            let field_length = buffer[current_position + i2 + 1];
+                            let dev_index = buffer[current_position + i2 + 2];
+                            let field = Field::DeveloperField; //Field::resolve_field(&local_message_type, field_definition_number);
+
+                            // let a:&u8 = &(base_type.type_number as u8);
+                            // println!("Dev field {} for {} should be {:?} (length {}) and resolved field is {}", field_definition_number, local_message_type.name,BaseType::parse(a), field_length, match &field {
+                            //     Field::Unknown(value) => "unknown",
+                            //     Field::EnumField(value) => &value.name,
+                            //     Field::ValueField(value) => &value.name,
+                            //     Field::DeveloperField => "dev field"
+                            // });
+                            let dev_field_definition = FieldDefinition {
+                                field,
+                                number: field_definition_number,
+                                size: field_length,
+                                base_type_value_or_dev_index: dev_index,
+                            };
+                            fields.push(dev_field_definition);
+                        }
+                        current_position += number_of_developer_fields as usize * 3;
                     }
                 }
                 let definition_message = MessageDefinition {
@@ -143,7 +167,52 @@ impl FitFile {
             } else {
                 let definition_message = local_message_types.get(&local_message_number).unwrap();
                 let parse_config = parse_configs.get(&local_message_number).unwrap();
-                let message = definition_message.read(&current_position, buffer, config, parse_config);
+                let message = definition_message.read(
+                    &current_position,
+                    buffer,
+                    config,
+                    parse_config,
+                    &developer_fields,
+                );
+                if message.0.message_type.number == 206 {
+                    // we can be sure that the dev fields are provided before they are referenced
+                    let Value::NumberValueU8(developer_data_index) =
+                        message.0.data.value("developer_data_index")
+                    else {
+                        panic!(
+                            "Expected u8 got {:?}",
+                            message.0.data.value("developer_data_index")
+                        )
+                    };
+                    let Value::NumberValueU8(field_definition_number) =
+                        message.0.data.value("field_definition_number")
+                    else {
+                        panic!(
+                            "Expected u8 got {:?}",
+                            message.0.data.value("developer_data_index")
+                        )
+                    };
+                    let Value::StringValue(field_name) = message.0.data.value("field_name") else {
+                        panic!(
+                            "Expected string got {:?}",
+                            message.0.data.value("developer_data_index")
+                        )
+                    };
+                    let Value::NumberValueU8(fit_base_type_id) =
+                        message.0.data.value("fit_base_type_id")
+                    else {
+                        panic!(
+                            "Expected u8 got {:?}",
+                            message.0.data.value("developer_data_index")
+                        )
+                    };
+                    developer_fields.push(DeveloperField {
+                        field_name: field_name.clone(),
+                        field_definition_number: field_definition_number.clone(),
+                        developer_data_index: developer_data_index.clone(),
+                        fit_base_type_id: fit_base_type_id.clone(),
+                    })
+                }
                 current_position = message.1;
                 if !message.0.is_unknown() || config.include_unknown_message_types {
                     messages.push(message.0);

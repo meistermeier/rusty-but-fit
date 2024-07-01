@@ -36,6 +36,7 @@ impl Value {
             _ => false,
         }
     }
+
     fn serialize_intern<S>(value_type: &Value, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -77,11 +78,23 @@ impl Serialize for Value {
     }
 }
 
+#[derive(Debug)]
 pub struct BaseType {
     pub read_size: usize,
     pub type_number: u8,
     pub invalid_value: u64,
     pub read: fn(&BaseType, data: &[u8], endianness: u8) -> Value,
+}
+
+impl Clone for BaseType {
+    fn clone(&self) -> Self {
+        BaseType {
+            read_size: self.read_size,
+            type_number: self.type_number,
+            invalid_value: self.invalid_value,
+            read: self.read,
+        }
+    }
 }
 
 impl BaseType {
@@ -108,7 +121,7 @@ impl BaseType {
         read_size: 1,
         type_number: 7,
         invalid_value: 0x00,
-        read: |me, data, endianness| {
+        read: |me, data, _| {
             let size = data.len();
             let mut value = String::new();
             for i in 0..size {
@@ -141,9 +154,9 @@ impl BaseType {
         BaseType::FLOAT64,
     ];
 
-    pub fn parse(value: u8) -> BaseType {
+    pub fn parse(value: &u8) -> BaseType {
         for base_type in BaseType::ALL_TYPES {
-            if base_type.type_number == value {
+            if base_type.type_number.eq(value) {
                 return base_type;
             }
         }

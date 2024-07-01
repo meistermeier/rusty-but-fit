@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+/// Auto-generated from FIT SDK Profile.xlsx
 use std::fmt;
 use std::fmt::{Display, Formatter};
 crate::key_value_enum! {

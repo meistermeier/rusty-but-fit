@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::data_types::BaseType;
-use crate::fields::Field;
+use crate::fields::{DeveloperField, Field, ValueField};
 use crate::message::MessageMap;
 use crate::{FitFileConfig, Message, ParseConfig};
 
@@ -19,21 +19,51 @@ impl MessageDefinition {
         buffer: &Vec<u8>,
         config: &FitFileConfig,
         parse_config: &ParseConfig,
+        developer_fields: &Vec<DeveloperField>,
     ) -> (Message, usize) {
         let print_unknown = config.include_unknown_fields;
         let print_invalid = config.include_invalid_values;
         let mut position = current_position.clone();
         let mut data_map = HashMap::new();
         for field_definition in self.fields.iter().clone() {
-            let end = position + (field_definition.size as usize);
+            let mut data_field = field_definition.field.clone();
+            let base_type_value = field_definition.base_type_value_or_dev_index.clone();
+            let mut base_type = BaseType::parse(&0);
+            let read_size = field_definition.size;
+            if field_definition.field == Field::DeveloperField
+                && self.message_type.number != 207
+                && self.message_type.number != 206
+            {
+                let mut got_field = false;
+                for dev_field in developer_fields {
+                    if dev_field.developer_data_index.eq(&base_type_value)
+                        && dev_field
+                            .field_definition_number
+                            .eq(&field_definition.number)
+                    {
+                        let field = dev_field.clone();
+                        let string = field.field_name.clone();
+                        base_type = BaseType::parse(&dev_field.fit_base_type_id);
+                        if got_field {
+                            panic!("Overwrite {} for {}", &string, self.message_type.number);
+                        }
+                        got_field = true;
+                        data_field = Field::ValueField(ValueField { name: string });
+                    }
+                }
+            } else {
+                base_type = BaseType::parse(&field_definition.base_type_value_or_dev_index);
+            }
+            // else {
+            let end = position + (read_size as usize);
             let data = &buffer[position..end];
-            let value = ((field_definition.base_type).read)(&field_definition.base_type, data, parse_config.endianness);
-            let data_field = &field_definition.field;
-            position += field_definition.size as usize;
+            let value = ((base_type).read)(&base_type, data, parse_config.endianness);
+            position += read_size as usize;
             if (!data_field.is_unknown() || print_unknown) && (!value.is_invalid() || print_invalid)
             {
                 data_map.insert(data_field.clone(), value.clone());
             }
+            // }
         }
         (
             Message::from(self.message_type.clone(), MessageMap { data: data_map }),
@@ -47,7 +77,7 @@ pub struct FieldDefinition {
     #[allow(dead_code)]
     pub number: u8, // still here for debugging purposes
     pub size: u8,
-    pub base_type: BaseType,
+    pub base_type_value_or_dev_index: u8,
 }
 
 #[derive(Serialize)]

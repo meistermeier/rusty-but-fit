@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use serde::ser::{SerializeMap, SerializeStruct};
-use serde::Serializer;
 use serde::Serialize;
+use serde::Serializer;
 
 use crate::data_types::Value;
 use crate::fields::Field;
@@ -112,8 +112,40 @@ impl Clone for Message {
     }
 }
 
+impl Serialize for Message {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut serialized = serializer
+            .serialize_struct(self.message_type.name, 2)
+            .unwrap();
+        serialized
+            .serialize_field("message_type", &self.display_name())
+            .unwrap();
+        serialized.serialize_field("message", &self.data).unwrap();
+        serialized.end()
+    }
+}
+
 pub struct MessageMap {
     pub data: HashMap<Field, Value>,
+}
+
+impl MessageMap {
+    pub fn value(&self, field_name: &str) -> &Value {
+        &self
+            .data
+            .iter()
+            .find(|&entry| match entry.0 {
+                Field::Unknown(_inner_field) => false,
+                Field::EnumField(inner_field) => inner_field.name.eq(field_name),
+                Field::ValueField(inner_field) => inner_field.name.eq(field_name),
+                Field::DeveloperField => false,
+            })
+            .unwrap()
+            .1
+    }
 }
 
 impl Clone for MessageMap {
@@ -155,21 +187,5 @@ impl Serialize for MessageMap {
             }
         }
         map.end()
-    }
-}
-
-impl Serialize for Message {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut serialized = serializer
-            .serialize_struct(self.message_type.name, 2)
-            .unwrap();
-        serialized
-            .serialize_field("message_type", &self.display_name())
-            .unwrap();
-        serialized.serialize_field("message", &self.data).unwrap();
-        serialized.end()
     }
 }

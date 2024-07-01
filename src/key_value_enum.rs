@@ -35,7 +35,7 @@ macro_rules! expand_fields {
             let message_number = message_type.number;
             return match (message_type.number, field_number) {
                 $(
-                    ($MESG_NUM, $FIELD_NUM) => Field::EnumField(EnumField::from($field_name, |value| $enum_type::resolve(value).to_string())),
+                    ($MESG_NUM, $FIELD_NUM) => Field::EnumField(EnumField::from($field_name.to_string(), |value| $enum_type::resolve(value).to_string())),
                 )+
                 _ => Field::Unknown(UnknownField { message_number, field_number }),
             };
@@ -45,7 +45,7 @@ macro_rules! expand_fields {
         pub fn resolve_field(message_type: &MessageType, field_number: u8) -> Field {
             return match (message_type.number, field_number) {
                 $(
-                    ($MESG_NUM, $FIELD_NUM) => Field::ValueField(ValueField::from($field_name)),
+                    ($MESG_NUM, $FIELD_NUM) => Field::ValueField(ValueField::from($field_name.to_string())),
                 )+
                 _ => Field::resolve_enum(message_type, field_number),
             };

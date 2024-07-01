@@ -7,11 +7,29 @@ use serde::{Serialize, Serializer};
 use crate::message_types::MessageType;
 use crate::types::*;
 
+pub struct DeveloperField {
+    pub developer_data_index: u8,
+    pub field_definition_number: u8,
+    pub fit_base_type_id: u8,
+    pub field_name: String,
+}
+
+impl Clone for DeveloperField {
+    fn clone(&self) -> Self {
+        DeveloperField {
+            developer_data_index: self.developer_data_index,
+            field_definition_number: self.field_definition_number,
+            fit_base_type_id: self.fit_base_type_id,
+            field_name: self.field_name.clone(),
+        }
+    }
+}
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum Field {
     Unknown(UnknownField),
     EnumField(EnumField),
     ValueField(ValueField),
+    DeveloperField,
 }
 impl Serialize for Field {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -22,6 +40,7 @@ impl Serialize for Field {
             Field::Unknown(value) => serializer.serialize_some(value),
             Field::EnumField(value) => serializer.serialize_str(&value.name),
             Field::ValueField(value) => serializer.serialize_str(&value.name),
+            Field::DeveloperField => serializer.serialize_str("dev field"),
         }
     }
 }
@@ -57,12 +76,12 @@ impl Serialize for UnknownField {
 }
 #[derive(Clone)]
 pub struct EnumField {
-    pub name: &'static str,
+    pub name: String,
     pub translate_enum: fn(&u32) -> String,
 }
 
 impl EnumField {
-    const fn from(name: &'static str, translate_enum: fn(&u32) -> String) -> Self {
+    const fn from(name: String, translate_enum: fn(&u32) -> String) -> Self {
         EnumField {
             name,
             translate_enum,
@@ -92,7 +111,7 @@ impl Serialize for EnumField {
 
 #[derive(Clone)]
 pub struct ValueField {
-    pub name: &'static str,
+    pub name: String,
 }
 
 impl Hash for ValueField {
@@ -125,7 +144,7 @@ impl Serialize for ValueField {
 }
 
 impl ValueField {
-    const fn from(name: &'static str) -> Self {
+    const fn from(name: String) -> Self {
         ValueField { name }
     }
 }
