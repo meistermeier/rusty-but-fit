@@ -24,7 +24,7 @@ impl Clone for DeveloperField {
         }
     }
 }
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Field {
     Unknown(UnknownField),
     EnumField(EnumField),
@@ -45,7 +45,7 @@ impl Serialize for Field {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UnknownField {
     pub message_number: u16,
     pub field_number: u8,
@@ -74,7 +74,7 @@ impl Serialize for UnknownField {
         serializer.serialize_str(serialized.as_str())
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EnumField {
     pub name: String,
     pub translate_enum: fn(&u32) -> String,

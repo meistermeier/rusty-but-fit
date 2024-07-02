@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::Serialize;
 use serde::Serializer;

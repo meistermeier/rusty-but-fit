@@ -103,9 +103,8 @@ impl FitFile {
                 let endianness = buffer[current_position + 1]; // architecture
                 let parse_config = ParseConfig { endianness };
                 current_position += 2; // skip the header part besides the last byte for the field number
-                let type_f1 = buffer[current_position];
-                let type_f2 = buffer[current_position + 1];
-                let local_message_type_value: u16 = type_f1 as u16 + type_f2 as u16;
+                let type_fields:[u8;2] = buffer[current_position..current_position + 2].try_into().unwrap();
+                let local_message_type_value: u16 = if endianness == 0 {u16::from_le_bytes(type_fields)} else { u16::from_be_bytes(type_fields) };
                 let local_message_type = MessageType::resolve(local_message_type_value);
 
                 current_position += 2; // skip the header part besides the last byte for the field number
@@ -140,13 +139,6 @@ impl FitFile {
                             let dev_index = buffer[current_position + i2 + 2];
                             let field = Field::DeveloperField; //Field::resolve_field(&local_message_type, field_definition_number);
 
-                            // let a:&u8 = &(base_type.type_number as u8);
-                            // println!("Dev field {} for {} should be {:?} (length {}) and resolved field is {}", field_definition_number, local_message_type.name,BaseType::parse(a), field_length, match &field {
-                            //     Field::Unknown(value) => "unknown",
-                            //     Field::EnumField(value) => &value.name,
-                            //     Field::ValueField(value) => &value.name,
-                            //     Field::DeveloperField => "dev field"
-                            // });
                             let dev_field_definition = FieldDefinition {
                                 field,
                                 number: field_definition_number,
@@ -171,13 +163,14 @@ impl FitFile {
                 }
                 let definition_message = option.unwrap();
                 let parse_config = parse_configs.get(&local_message_number).unwrap();
-                let message = definition_message.read(
+                let message = definition_message.read_message(
                     &current_position,
                     buffer,
                     config,
                     parse_config,
                     &developer_fields,
                 );
+                // hack my way into dev types
                 if message.0.message_type.number == 206 {
                     // we can be sure that the dev fields are provided before they are referenced
                     let Value::NumberValueU8(developer_data_index) =

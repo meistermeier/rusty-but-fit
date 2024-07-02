@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Serialize;
 
 use crate::data_types::BaseType;
@@ -7,13 +5,14 @@ use crate::fields::{DeveloperField, Field, ValueField};
 use crate::message::{FieldValue, Messages};
 use crate::{FitFileConfig, Message, ParseConfig};
 
+#[derive(Debug)]
 pub struct MessageDefinition {
     pub message_type: MessageType,
     pub fields: Vec<FieldDefinition>,
 }
 
 impl MessageDefinition {
-    pub fn read(
+    pub fn read_message(
         &self,
         current_position: &usize,
         buffer: &Vec<u8>,
@@ -70,6 +69,7 @@ impl MessageDefinition {
     }
 }
 
+#[derive(Debug)]
 pub struct FieldDefinition {
     pub field: Field,
     #[allow(dead_code)]
@@ -78,7 +78,7 @@ pub struct FieldDefinition {
     pub base_type_value_or_dev_index: u8,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct MessageType {
     pub number: u16,
     pub name: &'static str,
