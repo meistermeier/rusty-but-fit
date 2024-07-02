@@ -9,7 +9,7 @@ use garmin_fit::{FitFile, FitFileConfig};
 // CLI / clap definitions
 #[derive(Parser)]
 #[command(name = "Garmin FIT parser")]
-#[command(version = "0.1")]
+#[command(version = "0.5.0")]
 #[command(about = "Parsing for Garmin's FIT file format", long_about = None)]
 struct Cli {
     #[command(subcommand)]

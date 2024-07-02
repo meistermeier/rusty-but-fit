@@ -1,5 +1,7 @@
 # Garmin .FIT parser
 
+![crates.io](https://img.shields.io/crates/v/rusty-but-fit.svg)
+
 A project to get a little bit more familiar with rust-lang.
 
 The tool itself parses .FIT files and converts it to JSON-formatted messages.

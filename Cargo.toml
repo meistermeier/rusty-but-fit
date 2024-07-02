@@ -1,6 +1,6 @@
 [package]
 name = "rusty-but-fit"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
 description = "Read Garmin's .FIT files and output them as JSON."
@@ -16,7 +16,7 @@ name = "rusty-but-fit"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.7", features = ["derive"] }
+clap = { version = "4.5.8", features = ["derive"] }
 itertools = "0.13.0"
 serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.117"
+serde_json = "1.0.120"
