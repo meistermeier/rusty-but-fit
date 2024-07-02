@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::data_types::BaseType;
 use crate::fields::{DeveloperField, Field, ValueField};
-use crate::message::MessageMap;
+use crate::message::{FieldValue, Messages};
 use crate::{FitFileConfig, Message, ParseConfig};
 
 pub struct MessageDefinition {
@@ -24,7 +24,7 @@ impl MessageDefinition {
         let print_unknown = config.include_unknown_fields;
         let print_invalid = config.include_invalid_values;
         let mut position = current_position.clone();
-        let mut data_map = HashMap::new();
+        let mut message_data = Vec::new();
         for field_definition in self.fields.iter().clone() {
             let mut data_field = field_definition.field.clone();
             let base_type_value = field_definition.base_type_value_or_dev_index.clone();
@@ -54,19 +54,17 @@ impl MessageDefinition {
             } else {
                 base_type = BaseType::parse(&field_definition.base_type_value_or_dev_index);
             }
-            // else {
             let end = position + (read_size as usize);
             let data = &buffer[position..end];
             let value = ((base_type).read)(&base_type, data, parse_config.endianness);
             position += read_size as usize;
             if (!data_field.is_unknown() || print_unknown) && (!value.is_invalid() || print_invalid)
             {
-                data_map.insert(data_field.clone(), value.clone());
+                message_data.push(FieldValue {field: data_field.clone(), value: value.clone() });
             }
-            // }
         }
         (
-            Message::from(self.message_type.clone(), MessageMap { data: data_map }),
+            Message::from(self.message_type.clone(), Messages { data: message_data }),
             position,
         )
     }

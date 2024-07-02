@@ -69,7 +69,7 @@ impl FitFile {
         if debug {
             println!("{:?}", header);
         }
-        let mut current_position = 14; // position after header
+        let mut current_position:usize = header.length;
         let mut local_message_types: HashMap<u8, MessageDefinition> = HashMap::new();
         let mut parse_configs = HashMap::new();
         let mut developer_fields = vec![];
@@ -165,7 +165,11 @@ impl FitFile {
                 local_message_types.insert(local_message_number, definition_message);
                 parse_configs.insert(local_message_number, parse_config);
             } else {
-                let definition_message = local_message_types.get(&local_message_number).unwrap();
+                let option = local_message_types.get(&local_message_number);
+                if option.is_none() {
+                    panic!("What the heck is {}", local_message_number);
+                }
+                let definition_message = option.unwrap();
                 let parse_config = parse_configs.get(&local_message_number).unwrap();
                 let message = definition_message.read(
                     &current_position,

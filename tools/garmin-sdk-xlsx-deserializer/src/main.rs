@@ -136,7 +136,7 @@ fn make_nice(input: String) -> String {
         "byte" => "NumberValueU8".to_string(),
         "float32" => "NumberValueU64".to_string(),
         "float64" => "NumberValueU64".to_string(),
-        "product" => "GarminProduct".to_string(),
+        // "product" => "GarminProduct".to_string(),
         _ => input
             .replace("1", "one")
             .replace("2", "two")

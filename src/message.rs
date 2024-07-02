@@ -11,7 +11,7 @@ use crate::message_types::MessageType;
 #[derive(Debug, Serialize)]
 #[allow(dead_code)] // derived debug does not touch the fields
 pub struct Header {
-    length: u8,
+    pub length: usize,
     protocol_version: u8,
     profile_version: String,
     data_size: u32,
@@ -21,7 +21,7 @@ pub struct Header {
 
 impl Header {
     fn from(
-        length: u8,
+        length: usize,
         protocol_version: u8,
         profile_version: String,
         data_size: u32,
@@ -39,7 +39,7 @@ impl Header {
     }
 
     pub fn read_header(header_info: &[u8]) -> Header {
-        let length = *header_info.get(0).unwrap();
+        let length = *header_info.get(0).unwrap() as usize;
         let protocol_version = *header_info.get(1).unwrap() >> 4;
 
         let profile_field1: u16 = u16::from(*header_info.get(2).unwrap());
@@ -79,11 +79,11 @@ impl Header {
 
 pub struct Message {
     pub message_type: MessageType,
-    pub data: MessageMap,
+    pub data: Messages,
 }
 
 impl Message {
-    pub fn from(message_type: MessageType, data: MessageMap) -> Message {
+    pub fn from(message_type: MessageType, data: Messages) -> Message {
         Message { message_type, data }
     }
 
@@ -128,35 +128,41 @@ impl Serialize for Message {
     }
 }
 
-pub struct MessageMap {
-    pub data: HashMap<Field, Value>,
+#[derive(Clone)]
+pub struct FieldValue {
+    pub field: Field,
+    pub value: Value,
 }
 
-impl MessageMap {
+pub struct Messages {
+    pub data: Vec<FieldValue>,
+}
+
+impl Messages {
     pub fn value(&self, field_name: &str) -> &Value {
         &self
             .data
             .iter()
-            .find(|&entry| match entry.0 {
+            .find(|&entry| match &entry.field {
                 Field::Unknown(_inner_field) => false,
                 Field::EnumField(inner_field) => inner_field.name.eq(field_name),
                 Field::ValueField(inner_field) => inner_field.name.eq(field_name),
                 Field::DeveloperField => false,
             })
             .unwrap()
-            .1
+            .value
     }
 }
 
-impl Clone for MessageMap {
+impl Clone for Messages {
     fn clone(&self) -> Self {
-        MessageMap {
+        Messages {
             data: self.data.clone(),
         }
     }
 }
 
-impl Serialize for MessageMap {
+impl Serialize for Messages {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -165,25 +171,25 @@ impl Serialize for MessageMap {
             .serialize_map(Option::from(self.data.len()))
             .unwrap();
         for entry in &self.data {
-            map.serialize_key(&entry.0).unwrap();
-            match entry.1 {
+            map.serialize_key(&entry.field).unwrap();
+            match &entry.value {
                 // todo revisit this part
                 Value::EnumValue(value) => {
                     if value.is_empty() {
                         map.serialize_value("").unwrap()
                     } else {
                         let enum_field_value = &u32::from(value[0]);
-                        match entry.0 {
+                        match &entry.field {
                             Field::Unknown(_) => map.serialize_value(value).unwrap(),
                             Field::EnumField(enum_field) => {
                                 let string = (enum_field.translate_enum)(enum_field_value);
                                 map.serialize_value(&string).unwrap()
                             }
-                            _ => map.serialize_value(&entry.1).unwrap(),
+                            _ => map.serialize_value(&entry.value).unwrap(),
                         }
                     }
                 }
-                _ => map.serialize_value(&entry.1).unwrap(),
+                _ => map.serialize_value(&entry.value).unwrap(),
             }
         }
         map.end()
