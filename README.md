@@ -94,7 +94,7 @@ rusty-but-fit -f activity2.fit messages -m "Activity"
 ##### Read positional data from `Record` type
 This might need some conversion from semicircle to degrees.
 ```bash
-rusty-but-fit -f activity2.fit messages -m 'Record' | jq --argjson conversion "$((2**31))" '.[].message | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
+rusty-but-fit -f activity2.fit messages -m 'Record' | jq --argjson conversion "$((2**31))" '.[].message | select (.position_long != null) | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
 ```
 ```json
 ...
