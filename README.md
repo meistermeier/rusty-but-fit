@@ -1,5 +1,8 @@
 # Garmin .FIT parser
 
+Update: Even though this project has not yet seen a commit in the past months,
+I'm still interested in getting this to a state of completeness.
+
 ![crates.io](https://img.shields.io/crates/v/rusty-but-fit.svg)
 
 A project to get a little bit more familiar with rust-lang.
