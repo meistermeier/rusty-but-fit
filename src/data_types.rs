@@ -42,7 +42,7 @@ impl Value {
         S: Serializer,
     {
         match value_type {
-            Value::EnumValue(_) => serializer.serialize_str("<becoming an enum>"),
+            Value::EnumValue(value) => serializer.serialize_some(value),
             Value::NumberValueU64(value) => serializer.serialize_u64(value.clone()),
             Value::NumberValueU16(value) => serializer.serialize_u16(value.clone()),
             Value::NumberValueVecU16(value) => serializer.serialize_some(value),

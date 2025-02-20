@@ -13,7 +13,7 @@ mod types;
 mod key_value_enum;
 
 use crate::data_types::Value;
-use crate::fields::{DeveloperField, Field};
+use crate::fields::{DeveloperField, Field, UnknownField};
 use crate::message::{Header, Message};
 use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
 
@@ -137,7 +137,7 @@ impl FitFile {
                             let field_definition_number = buffer[current_position + i2 + 0];
                             let field_length = buffer[current_position + i2 + 1];
                             let dev_index = buffer[current_position + i2 + 2];
-                            let field = Field::DeveloperField; //Field::resolve_field(&local_message_type, field_definition_number);
+                            let field = Field::DeveloperField(UnknownField{message_number: local_message_type_value, field_number: field_definition_number});
 
                             let dev_field_definition = FieldDefinition {
                                 field,

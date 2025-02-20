@@ -90,14 +90,7 @@ impl Message {
     }
 
     pub fn display_name(&self) -> String {
-        if self.is_unknown() {
-            let message_number = self.message_type.number;
-            let mut field_value = "Unknown".to_string();
-            field_value.push_str(message_number.to_string().as_str());
-            field_value
-        } else {
-            self.message_type.name.to_string()
-        }
+        self.message_type.number.to_string()
     }
 }
 
@@ -145,7 +138,7 @@ impl Messages {
                 Field::Unknown(_inner_field) => false,
                 Field::EnumField(inner_field) => inner_field.name.eq(field_name),
                 Field::ValueField(inner_field) => inner_field.name.eq(field_name),
-                Field::DeveloperField => false,
+                Field::DeveloperField(_inner_field) => false,
             })
             .unwrap()
             .value
@@ -180,8 +173,9 @@ impl Serialize for Messages {
                         match &entry.field {
                             Field::Unknown(_) => map.serialize_value(value).unwrap(),
                             Field::EnumField(enum_field) => {
-                                let string = (enum_field.translate_enum)(enum_field_value);
-                                map.serialize_value(&string).unwrap()
+                                // let string = (enum_field.translate_enum)(enum_field_value);
+                                // map.serialize_value(&string).unwrap()
+                                map.serialize_value(&enum_field.field_number).unwrap();
                             }
                             _ => map.serialize_value(&entry.value).unwrap(),
                         }

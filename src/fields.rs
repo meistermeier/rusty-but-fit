@@ -29,7 +29,7 @@ pub enum Field {
     Unknown(UnknownField),
     EnumField(EnumField),
     ValueField(ValueField),
-    DeveloperField,
+    DeveloperField(UnknownField),
 }
 impl Serialize for Field {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -37,10 +37,10 @@ impl Serialize for Field {
         S: Serializer,
     {
         match self {
-            Field::Unknown(value) => serializer.serialize_some(value),
-            Field::EnumField(value) => serializer.serialize_str(&value.name),
-            Field::ValueField(value) => serializer.serialize_str(&value.name),
-            Field::DeveloperField => serializer.serialize_str("dev field"),
+            Field::Unknown(value) => serializer.serialize_u8(value.field_number),
+            Field::EnumField(value) => serializer.serialize_u8(value.field_number),
+            Field::ValueField(value) => serializer.serialize_u8(value.field_number),
+            Field::DeveloperField(value) => serializer.serialize_u8(value.field_number),
         }
     }
 }
@@ -77,13 +77,15 @@ impl Serialize for UnknownField {
 #[derive(Clone, Debug)]
 pub struct EnumField {
     pub name: String,
+    pub field_number: u8,
     pub translate_enum: fn(&u32) -> String,
 }
 
 impl EnumField {
-    const fn from(name: String, translate_enum: fn(&u32) -> String) -> Self {
+    const fn from(field_number: u8, name: String, translate_enum: fn(&u32) -> String) -> Self {
         EnumField {
             name,
+            field_number,
             translate_enum,
         }
     }
@@ -112,6 +114,7 @@ impl Serialize for EnumField {
 #[derive(Clone)]
 pub struct ValueField {
     pub name: String,
+    pub field_number: u8,
 }
 
 impl Hash for ValueField {
@@ -144,8 +147,8 @@ impl Serialize for ValueField {
 }
 
 impl ValueField {
-    const fn from(name: String) -> Self {
-        ValueField { name }
+    const fn from(field_number: u8, name: String) -> Self {
+        ValueField { field_number, name }
     }
 }
 

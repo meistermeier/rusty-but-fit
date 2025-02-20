@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::data_types::BaseType;
-use crate::fields::{DeveloperField, Field, ValueField};
+use crate::fields::{DeveloperField, Field, UnknownField, ValueField};
 use crate::message::{FieldValue, Messages};
 use crate::{FitFileConfig, Message, ParseConfig};
 
@@ -29,7 +29,7 @@ impl MessageDefinition {
             let base_type_value = field_definition.base_type_value_or_dev_index.clone();
             let mut base_type = BaseType::parse(&0);
             let read_size = field_definition.size;
-            if field_definition.field == Field::DeveloperField
+            if matches!(field_definition.field, Field::DeveloperField{..})
                 && self.message_type.number != 207
                 && self.message_type.number != 206
             {
@@ -47,7 +47,7 @@ impl MessageDefinition {
                             panic!("Overwrite {} for {}", &string, self.message_type.number);
                         }
                         got_field = true;
-                        data_field = Field::ValueField(ValueField { name: string });
+                        data_field = Field::ValueField(ValueField {field_number: field_definition.number, name: string });
                     }
                 }
             } else {
