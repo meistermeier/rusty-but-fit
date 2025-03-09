@@ -1,9 +1,6 @@
 # Garmin .FIT parser
 
-Update: Even though this project has not yet seen a commit in the past months,
-I'm still interested in getting this to a state of completeness.
-
-![crates.io](https://img.shields.io/crates/v/rusty-but-fit.svg)
+![https://crates.io/crates/rusty-but-fit](https://img.shields.io/crates/v/rusty-but-fit.svg)
 
 A project to get a little bit more familiar with rust-lang.
 
@@ -119,3 +116,35 @@ rusty-but-fit -f activity2.fit messages -m 'Record' | jq --argjson conversion "$
 }
 ...
 ```
+
+## fit-to-json (unreleased)
+If building from source, there is also a second binary `fit-to-json` available.
+It does exactly what its name says: converting .fit files to JSON.
+```shell
+fit-to-json activity2.fit
+```
+```json
+[
+  {
+    "message_number": 0,
+    "data": [
+      {
+        "number": 3,
+        "value": 3420729158
+      },
+      {
+        "number": 4,
+        "value": 1110445286
+      },
+      {
+        "number": 7,
+        "value": 4294967295
+      },
+      {
+        "number": 1,
+        "value": 1
+...
+```
+As you can see, it's up to the consumer how to interpret the raw values in this case.
+
+The only problem right now is that invalid values will be rendered as `"invalid value"` instead of just skipping/dismissing them.
