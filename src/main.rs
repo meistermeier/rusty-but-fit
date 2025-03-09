@@ -3,8 +3,7 @@ use std::io::BufReader;
 use std::io::Read;
 
 use clap::{Args, Parser, Subcommand};
-
-use garmin_fit::{FitFile, FitFileConfig};
+use garmin_fit::fit_file::{FitFile, FitFileConfig};
 
 // CLI / clap definitions
 #[derive(Parser)]

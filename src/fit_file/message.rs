@@ -3,8 +3,8 @@ use serde::Serialize;
 use serde::Serializer;
 
 use crate::data_types::Value;
-use crate::fields::Field;
-use crate::message_types::MessageType;
+use crate::fit_file::fields::Field;
+use crate::fit_file::message_types::MessageType;
 
 #[derive(Debug, Serialize)]
 #[allow(dead_code)] // derived debug does not touch the fields

@@ -3,9 +3,8 @@ use std::hash::{Hash, Hasher};
 use std::string::ToString;
 
 use serde::{Serialize, Serializer};
-
-use crate::message_types::MessageType;
-use crate::types::*;
+use crate::fit_file::types::*;
+use crate::fit_file::MessageType;
 
 pub struct DeveloperField {
     pub developer_data_index: u8,

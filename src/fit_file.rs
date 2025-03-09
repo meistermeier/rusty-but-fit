@@ -1,21 +1,17 @@
-use std::collections::HashMap;
-
-use itertools::Itertools;
-
-use serde::Serialize;
-
-mod data_types;
 mod fields;
-pub mod message;
+mod key_value_enum;
+mod message;
 mod message_types;
 mod types;
 
-mod key_value_enum;
-
 use crate::data_types::Value;
-use crate::fields::{DeveloperField, Field};
-use crate::message::{Header, Message};
-use crate::message_types::{FieldDefinition, MessageDefinition, MessageType};
+use crate::ParseConfig;
+use fields::{DeveloperField, Field};
+use itertools::Itertools;
+use message::{Header, Message};
+use message_types::{FieldDefinition, MessageDefinition, MessageType};
+use serde::Serialize;
+use std::collections::HashMap;
 
 /// Configuration for FIT file parsing
 pub struct FitFileConfig {
@@ -30,14 +26,11 @@ pub struct FitFileConfig {
     /// just parse the header and return the result
     pub header_only: bool,
 }
+
 #[derive(Serialize)]
 pub struct FitFile {
     pub header: Header,
     pub messages: Vec<Message>,
-}
-
-pub struct ParseConfig {
-    endianness: u8,
 }
 
 impl FitFile {
@@ -69,7 +62,7 @@ impl FitFile {
         if debug {
             println!("{:?}", header);
         }
-        let mut current_position:usize = header.length;
+        let mut current_position: usize = header.length;
         let mut local_message_types: HashMap<u8, MessageDefinition> = HashMap::new();
         let mut parse_configs = HashMap::new();
         let mut developer_fields = vec![];
@@ -103,8 +96,14 @@ impl FitFile {
                 let endianness = buffer[current_position + 1]; // architecture
                 let parse_config = ParseConfig { endianness };
                 current_position += 2; // skip the header part besides the last byte for the field number
-                let type_fields:[u8;2] = buffer[current_position..current_position + 2].try_into().unwrap();
-                let local_message_type_value: u16 = if endianness == 0 {u16::from_le_bytes(type_fields)} else { u16::from_be_bytes(type_fields) };
+                let type_fields: [u8; 2] = buffer[current_position..current_position + 2]
+                    .try_into()
+                    .unwrap();
+                let local_message_type_value: u16 = if endianness == 0 {
+                    u16::from_le_bytes(type_fields)
+                } else {
+                    u16::from_be_bytes(type_fields)
+                };
                 let local_message_type = MessageType::resolve(local_message_type_value);
 
                 current_position += 2; // skip the header part besides the last byte for the field number

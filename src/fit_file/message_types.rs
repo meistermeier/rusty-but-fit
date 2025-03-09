@@ -1,9 +1,9 @@
 use serde::Serialize;
 
 use crate::data_types::BaseType;
-use crate::fields::{DeveloperField, Field, ValueField};
-use crate::message::{FieldValue, Messages};
-use crate::{FitFileConfig, Message, ParseConfig};
+use crate::fit_file::fields::{DeveloperField, Field, ValueField};
+use crate::fit_file::message::{FieldValue, Messages};
+use crate::fit_file::{FitFileConfig, Message, ParseConfig};
 
 #[derive(Debug)]
 pub struct MessageDefinition {

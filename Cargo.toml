@@ -9,11 +9,15 @@ readme = "README.md"
 
 [lib]
 name = "garmin_fit"
-path = "src/fit_file.rs"
+path = "src/lib.rs"
 
 [[bin]]
 name = "rusty-but-fit"
 path = "src/main.rs"
+
+[[bin]]
+name = "fit-to-json"
+path = "src/bin/fit_to_json.rs"
 
 [dependencies]
 clap = { version = "4.5.30", features = ["derive"] }
