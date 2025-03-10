@@ -39,7 +39,7 @@ Options:
 #### `summary` command
 ##### Output message types in the file and their count:
 ```bash
-rusty-but-fit -f activity2.fit summary
+rusty-but-fit -f activity.fit summary
 ```
 ```json
 {
@@ -77,7 +77,7 @@ Options:
 ```
 ##### Get messages of a certain type
 ```bash
-rusty-but-fit -f activity2.fit messages -m "Activity"
+rusty-but-fit -f activity.fit messages -m "Activity"
 ```
 ```json
 {
@@ -94,7 +94,7 @@ rusty-but-fit -f activity2.fit messages -m "Activity"
 ##### Read positional data from `Record` type
 This might need some conversion from semicircle to degrees.
 ```bash
-rusty-but-fit -f activity2.fit messages -m 'Record' | jq --argjson conversion "$((2**31))" '.[].message | select (.position_long != null) | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
+rusty-but-fit -f activity.fit messages -m 'Record' | jq --argjson conversion "$((2**31))" '.[].message | select (.position_long != null) | {lon: (."position_long" * 180/$conversion), lat: (."position_lat" * 180/$conversion)}'
 ```
 ```json
 ...
@@ -120,31 +120,36 @@ rusty-but-fit -f activity2.fit messages -m 'Record' | jq --argjson conversion "$
 ## fit-to-json (unreleased)
 If building from source, there is also a second binary `fit-to-json` available.
 It does exactly what its name says: converting .fit files to JSON.
+
+> [!IMPORTANT]  
+> At the moment this binary does not support files containing developer fields.
+> Mostly those files provided by third-party accessories.
+
 ```shell
-fit-to-json activity2.fit
+fit-to-json activity.fit
 ```
 ```json
 [
   {
     "message_number": 0,
-    "data": [
+    "fields": [
       {
-        "number": 3,
-        "value": 3420729158
+        "3": 3420729158
       },
       {
-        "number": 4,
-        "value": 1110445286
+        "4": 1110445286
       },
       {
-        "number": 7,
-        "value": 4294967295
+        "7": 4294967295
       },
       {
-        "number": 1,
-        "value": 1
+        "1": 1
+      },
+      {
+        "2": 3121
+      },
 ...
 ```
 As you can see, it's up to the consumer how to interpret the raw values in this case.
-
-The only problem right now is that invalid values will be rendered as `"invalid value"` instead of just skipping/dismissing them.
+The representation of the messages' fields is `<field_number>:<value>`.
+Values defined as invalid in the SDK are filtered out.

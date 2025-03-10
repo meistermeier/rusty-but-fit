@@ -26,8 +26,6 @@ fn main() {
 
     reader.read_to_end(&mut buffer).unwrap();
 
-    print!("{}", buffer.len());
-
     let fit_file = FitFileRaw::from(&buffer);
     println!("{}", serde_json::to_string(&fit_file.messages).unwrap());
 }
