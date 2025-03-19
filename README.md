@@ -132,22 +132,23 @@ fit-to-json activity.fit
 [
   {
     "message_number": 0,
-    "fields": [
-      {
-        "3": 3420729158
-      },
-      {
-        "4": 1110445286
-      },
-      {
-        "7": 4294967295
-      },
-      {
-        "1": 1
-      },
-      {
-        "2": 3121
-      },
+    "fields": {
+      "3": 3420729158,
+      "4": 1110445286,
+      "7": 4294967295,
+      "1": 1,
+      "2": 3121,
+      "0": [
+        4
+      ]
+    }
+  },
+  {
+    "message_number": 49,
+    "fields": {
+      "2": "",
+      "0": 975
+    }
 ...
 ```
 As you can see, it's up to the consumer how to interpret the raw values in this case.

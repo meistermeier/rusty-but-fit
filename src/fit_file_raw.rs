@@ -1,7 +1,6 @@
 mod message_raw;
 
 use crate::fit_file_raw::message_raw::{FieldDefinitionRaw, MessageDefinitionRaw, MessageRaw};
-use crate::ParseConfig;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -18,7 +17,6 @@ impl FitFileRaw {
         let mut current_position: usize = header_length;
         let mut local_message_types: HashMap<u8, MessageDefinitionRaw> = HashMap::new();
         let mut parse_configs = HashMap::new();
-        // do the looooooping
         loop {
             // exit on message crc
             if current_position == buffer.len() - 2 {
@@ -39,7 +37,6 @@ impl FitFileRaw {
                 let mut fields: Vec<FieldDefinitionRaw> = vec![];
                 let _reserved = buffer[current_position]; // reserved
                 let endianness = buffer[current_position + 1]; // architecture
-                let parse_config = ParseConfig { endianness };
                 current_position += 2; // skip the header part besides the last byte for the field number
                 let type_fields: [u8; 2] = buffer[current_position..current_position + 2]
                     .try_into()
@@ -55,10 +52,10 @@ impl FitFileRaw {
                 current_position += 1;
 
                 for i in 0..number_of_fields {
-                    let i2 = (i as i32 * 3) as usize;
-                    let field_definition_number = buffer[current_position + i2 + 0];
-                    let field_length = buffer[current_position + i2 + 1];
-                    let base_type_value = buffer[current_position + i2 + 2];
+                    let field_index = (i as i32 * 3) as usize;
+                    let field_definition_number = buffer[current_position + field_index + 0];
+                    let field_length = buffer[current_position + field_index + 1];
+                    let base_type_value = buffer[current_position + field_index + 2];
                     let field_definition = FieldDefinitionRaw {
                         number: field_definition_number,
                         size: field_length,
@@ -71,14 +68,14 @@ impl FitFileRaw {
 
                 if developer_flag == 1 {
                     let number_of_developer_fields: u8 = buffer[current_position];
-                    // println!("There are {} dev fields", number_of_developer_fields);
                     if number_of_developer_fields > 0 {
                         current_position += 1;
                         for i in 0..number_of_developer_fields {
-                            let i2 = (i as i32 * 3) as usize;
-                            let field_definition_number = buffer[current_position + i2 + 0];
-                            let field_length = buffer[current_position + i2 + 1];
-                            let dev_index = buffer[current_position + i2 + 2];
+                            let field_index = (i as i32 * 3) as usize;
+                            let field_definition_number = buffer[current_position + field_index + 0];
+                            let field_length = buffer[current_position + field_index + 1];
+                            let dev_index = buffer[current_position + field_index + 2];
+
                             let dev_field_definition = FieldDefinitionRaw {
                                 number: field_definition_number,
                                 size: field_length,
@@ -95,18 +92,18 @@ impl FitFileRaw {
                     fields,
                 };
                 local_message_types.insert(local_message_number, definition_message);
-                parse_configs.insert(local_message_number, parse_config);
+                parse_configs.insert(local_message_number, endianness);
             } else {
                 let option = local_message_types.get(&local_message_number);
                 if option.is_none() {
                     panic!("What the heck is {}", local_message_number);
                 }
                 let definition_message = option.unwrap();
-                let parse_config = parse_configs.get(&local_message_number).unwrap();
+                let endianness = parse_configs.get(&local_message_number).unwrap();
                 let message = definition_message.read_message(
                     &current_position,
                     buffer,
-                    parse_config,
+                    endianness,
                 );
                 current_position = message.1;
                 messages.push(message.0);

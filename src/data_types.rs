@@ -83,7 +83,7 @@ pub struct BaseType {
     pub read_size: usize,
     pub type_number: u8,
     pub invalid_value: u64,
-    pub read: fn(&BaseType, data: &[u8], endianness: u8) -> Value,
+    pub read: fn(&BaseType, data: &[u8], endianness: &u8) -> Value,
 }
 
 impl Clone for BaseType {

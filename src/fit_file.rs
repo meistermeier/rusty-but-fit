@@ -5,7 +5,6 @@ mod message_types;
 mod types;
 
 use crate::data_types::Value;
-use crate::ParseConfig;
 use fields::{DeveloperField, Field};
 use itertools::Itertools;
 use message::{Header, Message};
@@ -94,7 +93,6 @@ impl FitFile {
                 let mut fields: Vec<FieldDefinition> = vec![];
                 let _reserved = buffer[current_position]; // reserved
                 let endianness = buffer[current_position + 1]; // architecture
-                let parse_config = ParseConfig { endianness };
                 current_position += 2; // skip the header part besides the last byte for the field number
                 let type_fields: [u8; 2] = buffer[current_position..current_position + 2]
                     .try_into()
@@ -154,19 +152,19 @@ impl FitFile {
                     fields,
                 };
                 local_message_types.insert(local_message_number, definition_message);
-                parse_configs.insert(local_message_number, parse_config);
+                parse_configs.insert(local_message_number, endianness);
             } else {
                 let option = local_message_types.get(&local_message_number);
                 if option.is_none() {
                     panic!("What the heck is {}", local_message_number);
                 }
                 let definition_message = option.unwrap();
-                let parse_config = parse_configs.get(&local_message_number).unwrap();
+                let endianness = parse_configs.get(&local_message_number).unwrap();
                 let message = definition_message.read_message(
                     &current_position,
                     buffer,
                     config,
-                    parse_config,
+                    endianness,
                     &developer_fields,
                 );
                 // hack my way into dev types

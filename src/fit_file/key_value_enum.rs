@@ -69,7 +69,7 @@ macro_rules! base_type {
                 let mut invalid_count = 0;
                 for i in (0..size).step_by(me.read_size) {
                     let bytes = data[i..i + me.read_size].try_into().unwrap();
-                    let read_value = if endianness == 0 {<$DATA_TYPE>::from_le_bytes(bytes)} else {<$DATA_TYPE>::from_be_bytes(bytes)};
+                    let read_value = if *endianness == 0 {<$DATA_TYPE>::from_le_bytes(bytes)} else {<$DATA_TYPE>::from_be_bytes(bytes)};
                     if read_value != me.invalid_value as $DATA_TYPE {
                         value.push(read_value);
                     } else {
@@ -82,7 +82,7 @@ macro_rules! base_type {
                     Value::$VALUE_TYPE_VEC(value)
                 }
             } else {
-                let value = if endianness == 0 {<$DATA_TYPE>::from_le_bytes(data.try_into().unwrap())} else {<$DATA_TYPE>::from_be_bytes(data.try_into().unwrap())};
+                let value = if *endianness == 0 {<$DATA_TYPE>::from_le_bytes(data.try_into().unwrap())} else {<$DATA_TYPE>::from_be_bytes(data.try_into().unwrap())};
                 if value == me.invalid_value as $DATA_TYPE {
                     Value::Invalid
                 } else {
